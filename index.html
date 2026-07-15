@@ -303,7 +303,7 @@
     <table id="ledgerTable">
       <thead>
         <tr>
-          <th>Date</th><th>Type</th><th>Source</th><th>Item</th><th>Qty</th>
+          <th>Date</th><th>Time (TCT/UTC)</th><th>Local time</th><th>Type</th><th>Source</th><th>Item</th><th>Qty</th>
           <th>Unit $</th><th>Total $</th><th>Counterparty</th><th>Profit</th><th></th>
         </tr>
       </thead>
@@ -454,6 +454,7 @@ const IGNORE_PATTERNS = [
   'travel depart','travel arrive','travel fee',
   'gym train','item use','attack ','crime ','stock buy','stock sell',
   'racket','organized crime','chain','education','medical','mail','hunting',
+  'job pay','items equip','items unequip','item equip','item unequip',
   'forums','faction deposit','message ','faction newsletter'
 ];
 
@@ -763,6 +764,19 @@ function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+function formatRowTime(row){
+  // Torn City Time (TCT) is officially identical to UTC — always, no daylight saving.
+  // Lagos (WAT) is UTC+1 year-round, so it's a fixed +1 hour offset from TCT/UTC.
+  const ts = row.ts || Date.parse(row.date + 'T00:00:00Z');
+  if(!ts) return { tct: '—', local: '—' };
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  const tct = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+  const localDate = new Date(ts + 60*60*1000); // +1 hour for Lagos/WAT
+  const local = `${pad(localDate.getUTCHours())}:${pad(localDate.getUTCMinutes())}:${pad(localDate.getUTCSeconds())}`;
+  return { tct, local };
+}
+
 function counterpartyDisplay(row){
   if(row.counterpartyId) return playerLink(row.counterpartyId);
   if(row.source === 'abroad'){
@@ -838,9 +852,12 @@ function render(){
       profitCell = `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>${noteTag}`;
     }
     const qtyTag = row.qtyEstimated ? ` <span class="tag" title="Torn's trade log doesn't give an exact quantity — estimated by counting repeated item names in the trade description">est.</span>` : '';
+    const times = formatRowTime(row);
 
     body.innerHTML += `<tr>
       <td>${row.date}</td>
+      <td>${times.tct}</td>
+      <td>${times.local}</td>
       <td><span class="tag ${row.type}">${row.type.toUpperCase()}</span></td>
       <td>${row.source}</td>
       <td>${escapeHtml(row.item)}</td>
@@ -916,6 +933,11 @@ function importLedger(event){
   reader.readAsText(file);
 }
 // --- Initialization: runs last, after every function/const above is defined ---
+const todayStr = new Date().toISOString().slice(0,10);
+['historyFromDate','profitDate','ledgerFilterInput'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.max = todayStr;
+});
 renderAreaList();
 
 const savedTheme = localStorage.getItem('tornTheme') || 'system';
