@@ -12,10 +12,23 @@
     --blue-dim: #1c3f99;
     --red: #ff2d4d;
     --red-dim: #99162b;
+    --green: #2ee65b;
+    --green-dim: #157a33;
     --text: #f1f1f5;
     --text-dim: #8d8d9a;
-    --green: #37d67a;
     --border: #201f28;
+    --input-bg: #0a0a0f;
+  }
+  [data-theme="light"]{
+    --bg: #f4f4f7;
+    --bg-2: #ffffff;
+    --text: #14141a;
+    --text-dim: #5b5b66;
+    --border: #dcdce2;
+    --input-bg: #ffffff;
+  }
+  [data-theme="light"] body{
+    background: radial-gradient(circle at 20% 0%, #eceef5 0%, #f4f4f7 55%);
   }
   * { box-sizing: border-box; }
   body{
@@ -46,7 +59,7 @@
   label{ font-size: 0.8rem; color: var(--text-dim); display:block; margin-bottom:4px; }
   input, select{
     width: 100%;
-    background: #0a0a0f;
+    background: var(--input-bg);
     border: 1px solid var(--border);
     color: var(--text);
     padding: 10px;
@@ -99,11 +112,11 @@
     font-size: 0.65rem;
     padding: 2px 6px;
     border-radius: 4px;
-    background: #0a0a0f;
+    background: var(--input-bg);
     border: 1px solid var(--border);
   }
-  .tag.buy{ color: var(--blue); border-color: var(--blue-dim); }
-  .tag.sell{ color: var(--red); border-color: var(--red-dim); }
+  .tag.buy{ color: var(--green); border-color: var(--green-dim); font-weight:700; }
+  .tag.sell{ color: var(--red); border-color: var(--red-dim); font-weight:700; }
   .total-box{
     text-align: center;
     padding: 16px;
@@ -135,9 +148,34 @@
   <div id="syncStatus" class="status"></div>
 </div>
 
-<div class="card total-box">
-  <div class="label">TOTAL PROFIT / LOSS (ALL SALES)</div>
-  <div class="amount" id="totalProfit">$0</div>
+<style>
+  .stats-row{ display:flex; gap:12px; }
+  .stats-row .card{ flex:1; margin-bottom:0; }
+  .total-box{ text-align:left; }
+  .total-box .amount{ font-size: 1.5rem; }
+  .balance-amount{ font-size: 1.3rem; font-family: monospace; font-weight:700; color: var(--text); }
+  .balance-networth{ font-size: 0.78rem; color: var(--text-dim); margin-top:2px; }
+</style>
+
+<div class="card">
+  <label for="themeSelect" style="margin-bottom:6px;">Appearance</label>
+  <select id="themeSelect" onchange="applyTheme(this.value)">
+    <option value="system">System default</option>
+    <option value="dark">Dark</option>
+    <option value="light">Light</option>
+  </select>
+</div>
+
+<div class="stats-row" style="margin-bottom:16px;">
+  <div class="card total-box">
+    <div class="label">TOTAL PROFIT / LOSS</div>
+    <div class="amount" id="totalProfit">$0</div>
+  </div>
+  <div class="card total-box">
+    <div class="label">MAIN ACCOUNT BALANCE</div>
+    <div class="balance-amount" id="balanceAmount">—</div>
+    <div class="balance-networth" id="balanceNetworth">(Net worth: —)</div>
+  </div>
 </div>
 
 <div class="card">
@@ -206,9 +244,64 @@ if(Object.keys(areaLabels).length === 0){
   areaLabels = { '4': 'South Africa' }; // seeded from confirmed report
   localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
 }
+
+// One-time cleanup: fix rows created before area labels / timestamps existed
+(function migrateLedger(){
+  let changed = false;
+  ledger.forEach(r => {
+    const oldFormat = /^Foreign Store \(Area (\d+)\)$/.exec(r.counterparty || '');
+    if(oldFormat){
+      const code = oldFormat[1];
+      r.areaCode = code;
+      r.counterparty = areaLabels[code] || ('Area ' + code + ' (unlabeled)');
+      changed = true;
+    }
+    if(!r.ts){
+      r.ts = Date.parse(r.date) || Date.now();
+      changed = true;
+    }
+  });
+  if(changed) localStorage.setItem('tornLedger', JSON.stringify(ledger));
+})();
 let nameCache = JSON.parse(localStorage.getItem('tornNameCache') || '{}');
 document.getElementById('apiKey').value = localStorage.getItem('tornApiKey') || '';
 renderAreaList();
+
+function applyTheme(pref){
+  localStorage.setItem('tornTheme', pref);
+  let effective = pref;
+  if(pref === 'system'){
+    effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', effective);
+}
+
+const savedTheme = localStorage.getItem('tornTheme') || 'system';
+document.getElementById('themeSelect').value = savedTheme;
+applyTheme(savedTheme);
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  if((localStorage.getItem('tornTheme') || 'system') === 'system') applyTheme('system');
+});
+
+// Show last-known balance immediately from cache, before any sync
+const cachedBalance = JSON.parse(localStorage.getItem('tornBalance') || 'null');
+if(cachedBalance) renderBalance(cachedBalance);
+
+function renderBalance(bal){
+  document.getElementById('balanceAmount').textContent = '$' + Number(bal.money_onhand).toLocaleString();
+  document.getElementById('balanceNetworth').textContent = '(Net worth: $' + Number(bal.networth).toLocaleString() + ')';
+}
+
+async function fetchBalance(apiKey){
+  try{
+    const res = await fetch('https://api.torn.com/user/?selections=money,networth&key=' + encodeURIComponent(apiKey));
+    const data = await res.json();
+    if(data.error) return;
+    const bal = { money_onhand: data.money_onhand, networth: data.networth?.total ?? 0 };
+    localStorage.setItem('tornBalance', JSON.stringify(bal));
+    renderBalance(bal);
+  }catch(e){ /* silent — balance is a bonus, not critical to the sync */ }
+}
 
 function saveAreaLabel(){
   const code = document.getElementById('areaCode').value.trim();
@@ -317,6 +410,7 @@ async function syncFromTorn(){
 
   try{
     const catalog = await getItemCatalog(apiKey);
+    fetchBalance(apiKey); // runs independently, doesn't block log parsing
 
     setStatus('Syncing log…');
     const res = await fetch('https://api.torn.com/user/?selections=log&key=' + encodeURIComponent(apiKey));
