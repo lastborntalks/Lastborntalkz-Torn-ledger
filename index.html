@@ -6,20 +6,21 @@
 <title>Torn Ledger</title>
 <style>
   :root{
-    --navy: #0b1220;
-    --navy-2: #121b2e;
-    --gold: #c9a34d;
-    --gold-dim: #8a7238;
-    --text: #e8e6df;
-    --text-dim: #8b93a3;
-    --green: #4caf7d;
-    --red: #d1614f;
-    --border: #232f45;
+    --bg: #050507;
+    --bg-2: #0e0e13;
+    --blue: #2f6bff;
+    --blue-dim: #1c3f99;
+    --red: #ff2d4d;
+    --red-dim: #99162b;
+    --text: #f1f1f5;
+    --text-dim: #8d8d9a;
+    --green: #37d67a;
+    --border: #201f28;
   }
   * { box-sizing: border-box; }
   body{
     margin:0;
-    background:var(--navy);
+    background: radial-gradient(circle at 20% 0%, #14141c 0%, #050507 55%), var(--bg);
     color:var(--text);
     font-family: -apple-system, Roboto, "Segoe UI", sans-serif;
     padding: 16px;
@@ -28,12 +29,15 @@
   h1{
     font-size: 1.3rem;
     letter-spacing: 0.03em;
-    color: var(--gold);
+    background: linear-gradient(90deg, var(--blue), var(--red));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
     margin: 0 0 4px 0;
   }
   .sub{ color: var(--text-dim); font-size: 0.85rem; margin-bottom: 20px; }
   .card{
-    background: var(--navy-2);
+    background: linear-gradient(160deg, var(--bg-2), #0a0a0e);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 14px;
@@ -42,7 +46,7 @@
   label{ font-size: 0.8rem; color: var(--text-dim); display:block; margin-bottom:4px; }
   input, select{
     width: 100%;
-    background: var(--navy);
+    background: #0a0a0f;
     border: 1px solid var(--border);
     color: var(--text);
     padding: 10px;
@@ -50,21 +54,22 @@
     font-size: 0.95rem;
     margin-bottom: 10px;
   }
+  input:focus, select:focus{ outline: 2px solid var(--blue); }
   button{
-    background: var(--gold);
-    color: #16130a;
+    background: linear-gradient(90deg, var(--blue), var(--red));
+    color: #fff;
     border: none;
     padding: 12px 16px;
     border-radius: 6px;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.9rem;
     width: 100%;
     margin-bottom: 8px;
   }
   button.secondary{
     background: transparent;
-    border: 1px solid var(--gold-dim);
-    color: var(--gold);
+    border: 1px solid var(--blue-dim);
+    color: var(--blue);
   }
   button.small{
     width: auto;
@@ -86,7 +91,7 @@
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
-  th{ color: var(--gold); font-weight: 600; }
+  th{ color: var(--blue); font-weight: 700; }
   .scroll-x{ overflow-x: auto; }
   .profit-pos{ color: var(--green); }
   .profit-neg{ color: var(--red); }
@@ -94,9 +99,11 @@
     font-size: 0.65rem;
     padding: 2px 6px;
     border-radius: 4px;
-    background: var(--navy);
+    background: #0a0a0f;
     border: 1px solid var(--border);
   }
+  .tag.buy{ color: var(--blue); border-color: var(--blue-dim); }
+  .tag.sell{ color: var(--red); border-color: var(--red-dim); }
   .total-box{
     text-align: center;
     padding: 16px;
@@ -153,8 +160,18 @@
 </div>
 
 <div class="card">
+  <label>Foreign area codes — teach it once</label>
+  <div class="row-buttons">
+    <input type="number" id="areaCode" placeholder="Area # (e.g. 4)" style="margin-bottom:0;">
+    <input type="text" id="areaName" placeholder="Country (e.g. South Africa)" style="margin-bottom:0;">
+  </div>
+  <button class="secondary" onclick="saveAreaLabel()" style="margin-top:8px;">Save Country Name</button>
+  <div id="areaListBox" style="font-size:0.7rem; color:var(--text-dim); margin-top:6px;"></div>
+</div>
+
+<div class="card">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-    <strong style="color:var(--gold); font-size:0.85rem;">LEDGER</strong>
+    <strong style="color:var(--blue); font-size:0.85rem;">LEDGER</strong>
     <div class="row-buttons" style="width:auto; gap:6px;">
       <button class="small secondary" onclick="exportLedger()">Export</button>
       <button class="small secondary" onclick="document.getElementById('importFile').click()">Import</button>
@@ -184,7 +201,37 @@
 
 <script>
 let ledger = JSON.parse(localStorage.getItem('tornLedger') || '[]');
+let areaLabels = JSON.parse(localStorage.getItem('tornAreaLabels') || '{}');
+if(Object.keys(areaLabels).length === 0){
+  areaLabels = { '4': 'South Africa' }; // seeded from confirmed report
+  localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
+}
+let nameCache = JSON.parse(localStorage.getItem('tornNameCache') || '{}');
 document.getElementById('apiKey').value = localStorage.getItem('tornApiKey') || '';
+renderAreaList();
+
+function saveAreaLabel(){
+  const code = document.getElementById('areaCode').value.trim();
+  const name = document.getElementById('areaName').value.trim();
+  if(!code || !name){ alert('Enter both the area number and country name.'); return; }
+  areaLabels[code] = name;
+  localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
+  document.getElementById('areaCode').value = '';
+  document.getElementById('areaName').value = '';
+  renderAreaList();
+  // retroactively relabel existing rows using this area code
+  ledger.forEach(r => {
+    if(r.areaCode === code){ r.counterparty = name; }
+  });
+  saveLedger();
+}
+
+function renderAreaList(){
+  const entries = Object.entries(areaLabels);
+  document.getElementById('areaListBox').innerHTML = entries.length
+    ? 'Known: ' + entries.map(([c,n]) => `Area ${c} = ${n}`).join(' · ')
+    : 'None saved yet.';
+}
 
 function saveKey(){
   const key = document.getElementById('apiKey').value.trim();
@@ -238,8 +285,28 @@ function itemName(catalog, id){
   return catalog[id] || ('Item #' + id);
 }
 
+async function resolveNames(apiKey){
+  const idsNeeded = [...new Set(
+    ledger.filter(r => r.counterpartyId).map(r => r.counterpartyId)
+  )].filter(id => !nameCache[id]);
+
+  const cap = idsNeeded.slice(0, 25); // stay well under Torn's 100/min limit per sync
+  for(const id of cap){
+    try{
+      const res = await fetch(`https://api.torn.com/user/${id}?selections=basic&key=${encodeURIComponent(apiKey)}`);
+      const d = await res.json();
+      if(d.name) nameCache[id] = d.name;
+    }catch(e){ /* skip, keep going */ }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  localStorage.setItem('tornNameCache', JSON.stringify(nameCache));
+  return idsNeeded.length - cap.length; // how many still remain unresolved
+}
+
 function playerLink(id){
-  return `<a href="https://www.torn.com/profiles.php?XID=${id}" target="_blank" style="color:var(--gold)">#${id}</a>`;
+  const name = nameCache[id];
+  const label = name ? `${escapeHtml(name)} [${id}]` : `#${id}`;
+  return `<a href="https://www.torn.com/profiles.php?XID=${id}" target="_blank" style="color:var(--blue)">${label}</a>`;
 }
 
 async function syncFromTorn(){
@@ -284,7 +351,8 @@ async function syncFromTorn(){
       } else if(title.includes('shop') || title.includes('store')){
         type = 'buy'; source = 'npc'; counterparty = 'NPC';
       } else if(title === 'item abroad buy'){
-        type = 'buy'; source = 'abroad'; counterparty = 'Foreign Store (Area ' + d.area + ')';
+        type = 'buy'; source = 'abroad';
+        counterparty = areaLabels[String(d.area)] || ('Area ' + d.area + ' (unlabeled)');
       }
 
       if(!type){
@@ -294,18 +362,20 @@ async function syncFromTorn(){
 
       const items = Array.isArray(d.items) ? d.items : [{id: d.item, qty: d.quantity || 1}];
       const unitCost = Number(d.cost_each ?? d.cost ?? d.price ?? 0);
+      const ts = entry.timestamp * 1000;
 
       for(const it of items){
         const uid = 'sync-' + id + '-' + it.id;
         if(ledger.some(r => r.syncId === uid)) continue;
 
         ledger.push({
-          syncId: uid, date, type, source,
+          syncId: uid, date, ts, type, source,
           item: itemName(catalog, it.id),
           qty: Number(it.qty) || 1,
           unitPrice: unitCost,
           counterparty,
-          counterpartyId: counterpartyId || null
+          counterpartyId: counterpartyId || null,
+          areaCode: source === 'abroad' ? String(d.area) : null
         });
         added++;
       }
@@ -315,8 +385,12 @@ async function syncFromTorn(){
       ? unmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
       : 'None — everything recognized matched a known pattern.';
 
+    setStatus('Resolving trader names…');
+    const remaining = await resolveNames(apiKey);
+
     saveLedger();
-    setStatus(`Synced. ${added} new line(s) added, ${unmatched.length} unrecognized (see below).`, true);
+    setStatus(`Synced. ${added} new line(s) added, ${unmatched.length} unrecognized.` +
+      (remaining > 0 ? ` ${remaining} trader name(s) left to resolve — sync again to continue.` : ''), true);
 
   }catch(err){
     setStatus('Fetch failed: ' + err.message + '. Check your key and connection.', false);
@@ -339,6 +413,7 @@ function addManualRow(){
   ledger.push({
     syncId: 'manual-' + Date.now(),
     date: new Date().toISOString().slice(0,10),
+    ts: Date.now(),
     type, source, item, qty, unitPrice, counterparty
   });
 
@@ -378,7 +453,11 @@ function render(){
   }
   empty.style.display = 'none';
 
-  const sorted = [...ledger].sort((a,b) => a.date.localeCompare(b.date));
+  const sorted = [...ledger].sort((a,b) => {
+    const tA = a.ts || Date.parse(a.date) || 0;
+    const tB = b.ts || Date.parse(b.date) || 0;
+    return tB - tA; // newest first
+  });
   let totalProfit = 0;
 
   for(const row of sorted){
@@ -397,7 +476,7 @@ function render(){
 
     body.innerHTML += `<tr>
       <td>${row.date}</td>
-      <td><span class="tag">${row.type.toUpperCase()}</span></td>
+      <td><span class="tag ${row.type}">${row.type.toUpperCase()}</span></td>
       <td>${row.source}</td>
       <td>${escapeHtml(row.item)}</td>
       <td>${row.qty}</td>
