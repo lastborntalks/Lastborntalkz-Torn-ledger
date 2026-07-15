@@ -4,59 +4,62 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Torn Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #050507;
-    --bg-2: #0e0e13;
-    --blue: #2f6bff;
-    --blue-dim: #1c3f99;
-    --red: #ff2d4d;
-    --red-dim: #99162b;
-    --green: #2ee65b;
-    --green-dim: #157a33;
-    --text: #f1f1f5;
-    --text-dim: #8d8d9a;
-    --border: #201f28;
-    --input-bg: #0a0a0f;
+    --bg: #0b0b0f;
+    --bg-2: #16161c;
+    --blue: #4d8dff;
+    --blue-dim: #2c4f99;
+    --red: #ff4d67;
+    --red-dim: #99303f;
+    --green: #33d97a;
+    --green-dim: #1a8a4a;
+    --text: #f2f2f5;
+    --text-dim: #9a9aa5;
+    --border: #26262f;
+    --input-bg: #101015;
   }
   [data-theme="light"]{
-    --bg: #f4f4f7;
+    --bg: #f7f7f9;
     --bg-2: #ffffff;
-    --text: #14141a;
-    --text-dim: #5b5b66;
-    --border: #dcdce2;
+    --blue: #1256e0;
+    --blue-dim: #a9c1f5;
+    --red: #d61f3c;
+    --red-dim: #f0aeb8;
+    --green: #157a3d;
+    --green-dim: #a8d9bb;
+    --text: #101014;
+    --text-dim: #55555f;
+    --border: #e2e2e8;
     --input-bg: #ffffff;
-  }
-  [data-theme="light"] body{
-    background: radial-gradient(circle at 20% 0%, #eceef5 0%, #f4f4f7 55%);
   }
   * { box-sizing: border-box; }
   body{
     margin:0;
-    background: radial-gradient(circle at 20% 0%, #14141c 0%, #050507 55%), var(--bg);
+    background: var(--bg);
     color:var(--text);
-    font-family: -apple-system, Roboto, "Segoe UI", sans-serif;
+    font-family: 'Inter', -apple-system, Roboto, "Segoe UI", sans-serif;
     padding: 16px;
     padding-bottom: 80px;
   }
   h1{
     font-size: 1.3rem;
     letter-spacing: 0.03em;
-    background: linear-gradient(90deg, var(--blue), var(--red));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    font-weight: 700;
+    color: var(--text);
     margin: 0 0 4px 0;
   }
   .sub{ color: var(--text-dim); font-size: 0.85rem; margin-bottom: 20px; }
   .card{
-    background: linear-gradient(160deg, var(--bg-2), #0a0a0e);
+    background: var(--bg-2);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 14px;
     margin-bottom: 16px;
   }
-  label{ font-size: 0.8rem; color: var(--text-dim); display:block; margin-bottom:4px; }
+  label{ font-size: 0.8rem; color: var(--text-dim); display:block; margin-bottom:4px; font-weight:600; }
   input, select{
     width: 100%;
     background: var(--input-bg);
@@ -66,10 +69,11 @@
     border-radius: 6px;
     font-size: 0.95rem;
     margin-bottom: 10px;
+    font-family: inherit;
   }
   input:focus, select:focus{ outline: 2px solid var(--blue); }
   button{
-    background: linear-gradient(90deg, var(--blue), var(--red));
+    background: var(--blue);
     color: #fff;
     border: none;
     padding: 12px 16px;
@@ -78,6 +82,7 @@
     font-size: 0.9rem;
     width: 100%;
     margin-bottom: 8px;
+    font-family: inherit;
   }
   button.secondary{
     background: transparent;
@@ -96,7 +101,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.78rem;
-    font-family: "SFMono-Regular", Consolas, monospace;
+    font-family: 'Roboto Mono', "SFMono-Regular", Consolas, monospace;
   }
   th, td{
     text-align: left;
@@ -104,10 +109,10 @@
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
-  th{ color: var(--blue); font-weight: 700; }
+  th{ color: var(--text-dim); font-weight: 700; font-family: 'Inter', sans-serif; }
   .scroll-x{ overflow-x: auto; }
-  .profit-pos{ color: var(--green); }
-  .profit-neg{ color: var(--red); }
+  .profit-pos{ color: var(--green); font-weight:600; }
+  .profit-neg{ color: var(--red); font-weight:600; }
   .tag{
     font-size: 0.65rem;
     padding: 2px 6px;
@@ -118,22 +123,42 @@
   .tag.buy{ color: var(--green); border-color: var(--green-dim); font-weight:700; }
   .tag.sell{ color: var(--red); border-color: var(--red-dim); font-weight:700; }
   .total-box{
-    text-align: center;
+    text-align: left;
     padding: 16px;
   }
   .total-box .amount{
     font-size: 1.8rem;
-    font-family: monospace;
+    font-family: 'Roboto Mono', monospace;
     font-weight: 700;
   }
-  .total-box .label{ color: var(--text-dim); font-size: 0.8rem; }
+  .total-box .label{ color: var(--text-dim); font-size: 0.8rem; font-weight:600; }
   details summary{ cursor: pointer; color: var(--text-dim); font-size: 0.8rem; }
   .row-buttons{ display:flex; gap:8px; }
   .row-buttons button{ flex:1; }
   .empty{ color: var(--text-dim); font-size: 0.85rem; padding: 12px 0; text-align:center; }
+  #themeToggle{
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 0;
+    margin: 0;
+  }
 </style>
 </head>
 <body>
+
+<button id="themeToggle" onclick="cycleTheme()" title="Appearance"></button>
 
 <h1>TORN LEDGER</h1>
 <div class="sub">Lastborn Creative — trading tracker</div>
@@ -148,23 +173,23 @@
   <div id="syncStatus" class="status"></div>
 </div>
 
+<div class="card">
+  <label>Load older history</label>
+  <div class="row-buttons">
+    <input type="date" id="historyFromDate" style="margin-bottom:0;">
+    <button class="secondary" onclick="loadOlderHistory()" style="width:auto; margin-bottom:0; white-space:nowrap;">Load</button>
+  </div>
+  <div id="historyStatus" class="status"></div>
+</div>
+
 <style>
   .stats-row{ display:flex; gap:12px; }
   .stats-row .card{ flex:1; margin-bottom:0; }
   .total-box{ text-align:left; }
   .total-box .amount{ font-size: 1.5rem; }
-  .balance-amount{ font-size: 1.3rem; font-family: monospace; font-weight:700; color: var(--text); }
+  .balance-amount{ font-size: 1.3rem; font-family: 'Roboto Mono', monospace; font-weight:700; color: var(--text); }
   .balance-networth{ font-size: 0.78rem; color: var(--text-dim); margin-top:2px; }
 </style>
-
-<div class="card">
-  <label for="themeSelect" style="margin-bottom:6px;">Appearance</label>
-  <select id="themeSelect" onchange="applyTheme(this.value)">
-    <option value="system">System default</option>
-    <option value="dark">Dark</option>
-    <option value="light">Light</option>
-  </select>
-</div>
 
 <div class="stats-row" style="margin-bottom:16px;">
   <div class="card total-box">
@@ -175,6 +200,20 @@
     <div class="label">MAIN ACCOUNT BALANCE</div>
     <div class="balance-amount" id="balanceAmount">—</div>
     <div class="balance-networth" id="balanceNetworth">(Net worth: —)</div>
+  </div>
+</div>
+
+<div class="card">
+  <label>Check profit for a specific day</label>
+  <div class="row-buttons">
+    <button class="small secondary" onclick="setProfitDate('today')" style="flex:1;">Today</button>
+    <button class="small secondary" onclick="setProfitDate('yesterday')" style="flex:1;">Yesterday</button>
+    <button class="small secondary" onclick="setProfitDate('all')" style="flex:1;">All time</button>
+  </div>
+  <input type="date" id="profitDate" onchange="renderDayProfit()">
+  <div id="dayProfitBox" class="total-box" style="padding:6px 0 0 0;">
+    <div class="label">PROFIT FOR SELECTED DAY</div>
+    <div class="amount" id="dayProfitAmount">$0</div>
   </div>
 </div>
 
@@ -266,6 +305,8 @@ if(Object.keys(areaLabels).length === 0){
 let nameCache = JSON.parse(localStorage.getItem('tornNameCache') || '{}');
 document.getElementById('apiKey').value = localStorage.getItem('tornApiKey') || '';
 
+const THEME_ICONS = { system: '⚙', light: '☀', dark: '☾' };
+
 function applyTheme(pref){
   localStorage.setItem('tornTheme', pref);
   let effective = pref;
@@ -273,6 +314,15 @@ function applyTheme(pref){
     effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   }
   document.documentElement.setAttribute('data-theme', effective);
+  const btn = document.getElementById('themeToggle');
+  if(btn) btn.textContent = THEME_ICONS[pref];
+}
+
+function cycleTheme(){
+  const order = ['system','light','dark'];
+  const current = localStorage.getItem('tornTheme') || 'system';
+  const next = order[(order.indexOf(current) + 1) % order.length];
+  applyTheme(next);
 }
 
 window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
@@ -411,6 +461,69 @@ function playerLink(id){
   return `<a href="https://www.torn.com/profiles.php?XID=${id}" target="_blank" style="color:var(--blue)">${label}</a>`;
 }
 
+// Shared parser: takes one batch of raw log entries + item catalog, mutates ledger, returns stats.
+// Used by both a normal sync and the "load older history" pagination.
+function ingestLogBatch(logObj, catalog){
+  const unmatched = [];
+  let added = 0;
+  let oldestTs = null;
+
+  for(const id in logObj){
+    const entry = logObj[id];
+    const rawTitle = entry.title || '';
+    const title = rawTitle.toLowerCase();
+    const d = entry.data || {};
+    const date = new Date(entry.timestamp * 1000).toISOString().slice(0,10);
+    const ts = entry.timestamp * 1000;
+    if(oldestTs === null || ts < oldestTs) oldestTs = ts;
+
+    if(isNoise(title)) continue;
+
+    let type = null, source = null, counterpartyId = null, counterparty = 'Unknown';
+
+    if(title === 'bazaar sell'){
+      type = 'sell'; source = 'bazaar'; counterpartyId = d.buyer; counterparty = 'Player #' + d.buyer;
+    } else if(title === 'bazaar buy'){
+      type = 'buy'; source = 'bazaar'; counterpartyId = d.seller; counterparty = 'Player #' + d.seller;
+    } else if(title.includes('item market') && title.includes('sell')){
+      type = 'sell'; source = 'itemmarket'; counterparty = 'Item Market';
+    } else if(title.includes('item market') && title.includes('buy')){
+      type = 'buy'; source = 'itemmarket'; counterparty = 'Item Market';
+    } else if(title.includes('shop') || title.includes('store')){
+      type = 'buy'; source = 'npc'; counterparty = 'NPC';
+    } else if(title === 'item abroad buy'){
+      type = 'buy'; source = 'abroad';
+      counterparty = areaLabels[String(d.area)] || ('Area ' + d.area + ' (unlabeled)');
+    }
+
+    if(!type){
+      unmatched.push({title: rawTitle, timestamp: date, data: d});
+      continue;
+    }
+
+    const items = Array.isArray(d.items) ? d.items : [{id: d.item, qty: d.quantity || 1}];
+    const unitCost = Number(d.cost_each ?? d.cost ?? d.price ?? 0);
+
+    for(const it of items){
+      const uid = 'sync-' + id + '-' + it.id;
+      if(ledger.some(r => r.syncId === uid)) continue;
+
+      ledger.push({
+        syncId: uid, date, ts, type, source,
+        item: itemName(catalog, it.id),
+        qty: Number(it.qty) || 1,
+        unitPrice: unitCost,
+        counterparty,
+        counterpartyId: counterpartyId || null,
+        areaCode: source === 'abroad' ? String(d.area) : null
+      });
+      added++;
+    }
+  }
+
+  return { added, unmatched, oldestTs };
+}
+
 async function syncFromTorn(){
   const apiKey = document.getElementById('apiKey').value.trim();
   if(!apiKey){ setStatus('Enter your API key first.', false); return; }
@@ -429,60 +542,7 @@ async function syncFromTorn(){
       return;
     }
 
-    const unmatched = [];
-    let added = 0;
-
-    for(const id in data.log){
-      const entry = data.log[id];
-      const rawTitle = entry.title || '';
-      const title = rawTitle.toLowerCase();
-      const d = entry.data || {};
-      const date = new Date(entry.timestamp * 1000).toISOString().slice(0,10);
-
-      if(isNoise(title)) continue;
-
-      let type = null, source = null, counterpartyId = null, counterparty = 'Unknown';
-
-      if(title === 'bazaar sell'){
-        type = 'sell'; source = 'bazaar'; counterpartyId = d.buyer; counterparty = 'Player #' + d.buyer;
-      } else if(title === 'bazaar buy'){
-        type = 'buy'; source = 'bazaar'; counterpartyId = d.seller; counterparty = 'Player #' + d.seller;
-      } else if(title.includes('item market') && title.includes('sell')){
-        type = 'sell'; source = 'itemmarket'; counterparty = 'Item Market';
-      } else if(title.includes('item market') && title.includes('buy')){
-        type = 'buy'; source = 'itemmarket'; counterparty = 'Item Market';
-      } else if(title.includes('shop') || title.includes('store')){
-        type = 'buy'; source = 'npc'; counterparty = 'NPC';
-      } else if(title === 'item abroad buy'){
-        type = 'buy'; source = 'abroad';
-        counterparty = areaLabels[String(d.area)] || ('Area ' + d.area + ' (unlabeled)');
-      }
-
-      if(!type){
-        unmatched.push({title: rawTitle, timestamp: date, data: d});
-        continue;
-      }
-
-      const items = Array.isArray(d.items) ? d.items : [{id: d.item, qty: d.quantity || 1}];
-      const unitCost = Number(d.cost_each ?? d.cost ?? d.price ?? 0);
-      const ts = entry.timestamp * 1000;
-
-      for(const it of items){
-        const uid = 'sync-' + id + '-' + it.id;
-        if(ledger.some(r => r.syncId === uid)) continue;
-
-        ledger.push({
-          syncId: uid, date, ts, type, source,
-          item: itemName(catalog, it.id),
-          qty: Number(it.qty) || 1,
-          unitPrice: unitCost,
-          counterparty,
-          counterpartyId: counterpartyId || null,
-          areaCode: source === 'abroad' ? String(d.area) : null
-        });
-        added++;
-      }
-    }
+    const { added, unmatched } = ingestLogBatch(data.log || {}, catalog);
 
     document.getElementById('unmatchedBox').innerHTML = unmatched.length
       ? unmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
@@ -497,6 +557,65 @@ async function syncFromTorn(){
 
   }catch(err){
     setStatus('Fetch failed: ' + err.message + '. Check your key and connection.', false);
+  }
+}
+
+async function loadOlderHistory(){
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const fromDateStr = document.getElementById('historyFromDate').value;
+  const statusEl = document.getElementById('historyStatus');
+
+  if(!apiKey){ statusEl.textContent = 'Enter and save your API key first.'; statusEl.className = 'status err'; return; }
+  if(!fromDateStr){ statusEl.textContent = 'Pick a start date first.'; statusEl.className = 'status err'; return; }
+
+  const targetTs = new Date(fromDateStr + 'T00:00:00Z').getTime();
+  const catalog = await getItemCatalog(apiKey);
+
+  let toParam = null; // null = most recent 100
+  let totalAdded = 0;
+  let round = 0;
+  const maxRounds = 15; // safety cap — each round is 100 entries, ~1500 max per click
+
+  try{
+    while(round < maxRounds){
+      round++;
+      statusEl.className = 'status';
+      statusEl.textContent = `Fetching batch ${round}…`;
+
+      let url = 'https://api.torn.com/user/?selections=log&key=' + encodeURIComponent(apiKey);
+      if(toParam) url += '&to=' + toParam;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      if(data.error){
+        statusEl.className = 'status err';
+        statusEl.textContent = 'Torn API error: ' + data.error.error + ` (stopped after ${totalAdded} new entries)`;
+        saveLedger();
+        return;
+      }
+
+      const logObj = data.log || {};
+      const entryCount = Object.keys(logObj).length;
+      if(entryCount === 0) break; // nothing more to fetch
+
+      const { added, oldestTs } = ingestLogBatch(logObj, catalog);
+      totalAdded += added;
+
+      if(oldestTs === null) break;
+      if(oldestTs <= targetTs) break; // reached the requested start date
+      if(entryCount < 100) break; // Torn has no more history to give
+
+      toParam = Math.floor(oldestTs / 1000) - 1; // page further back next round
+      await new Promise(r => setTimeout(r, 1200)); // be gentle with Torn's cache/rate limits
+    }
+
+    saveLedger();
+    statusEl.className = 'status ok';
+    statusEl.textContent = `Done. ${totalAdded} new entries pulled across ${round} batch(es).`;
+  }catch(err){
+    statusEl.className = 'status err';
+    statusEl.textContent = 'Failed: ' + err.message + ` (${totalAdded} entries saved before the error)`;
+    saveLedger();
   }
 }
 
@@ -553,6 +672,13 @@ function counterpartyDisplay(row){
   return escapeHtml(row.counterparty);
 }
 
+function computeSellProfit(row){
+  const cost = avgCost(row.item);
+  const hasCostRecord = cost !== null;
+  const effectiveCost = hasCostRecord ? cost : 0;
+  return { profit: (row.unitPrice - effectiveCost) * row.qty, hasCostRecord };
+}
+
 function render(){
   const body = document.getElementById('ledgerBody');
   const empty = document.getElementById('emptyMsg');
@@ -561,6 +687,7 @@ function render(){
   if(ledger.length === 0){
     empty.style.display = 'block';
     document.getElementById('totalProfit').textContent = '$0';
+    renderDayProfit();
     return;
   }
   empty.style.display = 'none';
@@ -576,10 +703,7 @@ function render(){
     const total = row.qty * row.unitPrice;
     let profitCell = '—';
     if(row.type === 'sell'){
-      const cost = avgCost(row.item);
-      const hasCostRecord = cost !== null;
-      const effectiveCost = hasCostRecord ? cost : 0; // no buy on record = treated as free (crime drop, pre-existing stock, etc.)
-      const profit = (row.unitPrice - effectiveCost) * row.qty;
+      const { profit, hasCostRecord } = computeSellProfit(row);
       totalProfit += profit;
       const noteTag = hasCostRecord ? '' : ` <span class="tag" title="No matching buy in your ledger — full sale counted as profit">no buy record</span>`;
       profitCell = `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>${noteTag}`;
@@ -602,6 +726,37 @@ function render(){
   document.getElementById('totalProfit').textContent =
     (totalProfit >= 0 ? '+$' : '-$') + Math.abs(totalProfit).toFixed(2);
   document.getElementById('totalProfit').style.color = totalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+
+  renderDayProfit();
+}
+
+function setProfitDate(which){
+  const input = document.getElementById('profitDate');
+  const today = new Date();
+  if(which === 'today'){
+    input.value = today.toISOString().slice(0,10);
+  } else if(which === 'yesterday'){
+    const y = new Date(today); y.setDate(y.getDate() - 1);
+    input.value = y.toISOString().slice(0,10);
+  } else {
+    input.value = '';
+  }
+  renderDayProfit();
+}
+
+function renderDayProfit(){
+  const dateVal = document.getElementById('profitDate')?.value;
+  const label = document.querySelector('#dayProfitBox .label');
+  const amountEl = document.getElementById('dayProfitAmount');
+  if(!amountEl) return;
+
+  const sells = ledger.filter(r => r.type === 'sell' && (!dateVal || r.date === dateVal));
+  let dayTotal = 0;
+  sells.forEach(row => { dayTotal += computeSellProfit(row).profit; });
+
+  label.textContent = dateVal ? ('PROFIT FOR ' + dateVal) : 'PROFIT — ALL TIME';
+  amountEl.textContent = (dayTotal >= 0 ? '+$' : '-$') + Math.abs(dayTotal).toFixed(2);
+  amountEl.style.color = dayTotal >= 0 ? 'var(--green)' : 'var(--red)';
 }
 
 function exportLedger(){
@@ -634,7 +789,6 @@ function importLedger(event){
 renderAreaList();
 
 const savedTheme = localStorage.getItem('tornTheme') || 'system';
-document.getElementById('themeSelect').value = savedTheme;
 applyTheme(savedTheme);
 
 const cachedBalance = JSON.parse(localStorage.getItem('tornBalance') || 'null');
