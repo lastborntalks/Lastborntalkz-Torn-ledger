@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torn Ledger</title>
+<style>
+  :root{
+    --navy: #0b1220;
+    --navy-2: #121b2e;
+    --gold: #c9a34d;
+    --gold-dim: #8a7238;
+    --text: #e8e6df;
+    --text-dim: #8b93a3;
+    --green: #4caf7d;
+    --red: #d1614f;
+    --border: #232f45;
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0;
+    background:var(--navy);
+    color:var(--text);
+    font-family: -apple-system, Roboto, "Segoe UI", sans-serif;
+    padding: 16px;
+    padding-bottom: 80px;
+  }
+  h1{
+    font-size: 1.3rem;
+    letter-spacing: 0.03em;
+    color: var(--gold);
+    margin: 0 0 4px 0;
+  }
+  .sub{ color: var(--text-dim); font-size: 0.85rem; margin-bottom: 20px; }
+  .card{
+    background: var(--navy-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  label{ font-size: 0.8rem; color: var(--text-dim); display:block; margin-bottom:4px; }
+  input, select{
+    width: 100%;
+    background: var(--navy);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+  }
+  button{
+    background: var(--gold);
+    color: #16130a;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  button.secondary{
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+  }
+  button.small{
+    width: auto;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+  .status{ font-size: 0.8rem; margin-top: 6px; color: var(--text-dim); }
+  .status.ok{ color: var(--green); }
+  .status.err{ color: var(--red); }
+  table{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+  th, td{
+    text-align: left;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  th{ color: var(--gold); font-weight: 600; }
+  .scroll-x{ overflow-x: auto; }
+  .profit-pos{ color: var(--green); }
+  .profit-neg{ color: var(--red); }
+  .tag{
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--navy);
+    border: 1px solid var(--border);
+  }
+  .total-box{
+    text-align: center;
+    padding: 16px;
+  }
+  .total-box .amount{
+    font-size: 1.8rem;
+    font-family: monospace;
+    font-weight: 700;
+  }
+  .total-box .label{ color: var(--text-dim); font-size: 0.8rem; }
+  details summary{ cursor: pointer; color: var(--text-dim); font-size: 0.8rem; }
+  .row-buttons{ display:flex; gap:8px; }
+  .row-buttons button{ flex:1; }
+  .empty{ color: var(--text-dim); font-size: 0.85rem; padding: 12px 0; text-align:center; }
+</style>
+</head>
+<body>
+
+<h1>TORN LEDGER</h1>
+<div class="sub">Lastborn Creative — trading tracker</div>
+
+<div class="card">
+  <label for="apiKey">Torn API Key</label>
+  <input type="text" id="apiKey" placeholder="Paste your API key">
+  <div class="row-buttons">
+    <button onclick="saveKey()">Save Key</button>
+    <button class="secondary" onclick="syncFromTorn()">Sync Now</button>
+  </div>
+  <div id="syncStatus" class="status"></div>
+</div>
+
+<div class="card total-box">
+  <div class="label">TOTAL PROFIT / LOSS (ALL SALES)</div>
+  <div class="amount" id="totalProfit">$0</div>
+</div>
+
+<div class="card">
+  <label>Add entry manually</label>
+  <select id="manType">
+    <option value="buy">Buy</option>
+    <option value="sell">Sell</option>
+  </select>
+  <select id="manSource">
+    <option value="bazaar">Bazaar</option>
+    <option value="itemmarket">Item Market</option>
+    <option value="npc">NPC Shop</option>
+  </select>
+  <input type="text" id="manItem" placeholder="Item name">
+  <input type="number" id="manQty" placeholder="Quantity">
+  <input type="number" id="manPrice" placeholder="Unit price ($)">
+  <input type="text" id="manCounterparty" placeholder="Who from / sold to (optional)">
+  <button onclick="addManualRow()">Add to Ledger</button>
+</div>
+
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <strong style="color:var(--gold); font-size:0.85rem;">LEDGER</strong>
+    <div class="row-buttons" style="width:auto; gap:6px;">
+      <button class="small secondary" onclick="exportLedger()">Export</button>
+      <button class="small secondary" onclick="document.getElementById('importFile').click()">Import</button>
+      <input type="file" id="importFile" style="display:none" onchange="importLedger(event)">
+    </div>
+  </div>
+  <div class="scroll-x">
+    <table id="ledgerTable">
+      <thead>
+        <tr>
+          <th>Date</th><th>Type</th><th>Source</th><th>Item</th><th>Qty</th>
+          <th>Unit $</th><th>Total $</th><th>Counterparty</th><th>Profit</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="ledgerBody"></tbody>
+    </table>
+    <div id="emptyMsg" class="empty" style="display:none;">No entries yet. Sync or add manually above.</div>
+  </div>
+</div>
+
+<div class="card">
+  <details>
+    <summary>Unmatched log entries (raw, from last sync)</summary>
+    <div id="unmatchedBox" style="margin-top:8px; font-size:0.7rem; color: var(--text-dim);"></div>
+  </details>
+</div>
+
+<script>
+let ledger = JSON.parse(localStorage.getItem('tornLedger') || '[]');
+document.getElementById('apiKey').value = localStorage.getItem('tornApiKey') || '';
+
+function saveKey(){
+  const key = document.getElementById('apiKey').value.trim();
+  localStorage.setItem('tornApiKey', key);
+  setStatus('Key saved.', true);
+}
+
+function setStatus(msg, ok){
+  const el = document.getElementById('syncStatus');
+  el.textContent = msg;
+  el.className = 'status ' + (ok === true ? 'ok' : ok === false ? 'err' : '');
+}
+
+function saveLedger(){
+  localStorage.setItem('tornLedger', JSON.stringify(ledger));
+  render();
+}
+
+function pick(obj, keys){
+  for(const k of keys){
+    if(obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+  }
+  return null;
+}
+
+async function syncFromTorn(){
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if(!apiKey){ setStatus('Enter your API key first.', false); return; }
+  localStorage.setItem('tornApiKey', apiKey);
+  setStatus('Syncing…');
+
+  try{
+    const res = await fetch('https://api.torn.com/user/?selections=log&key=' + encodeURIComponent(apiKey));
+    const data = await res.json();
+    if(data.error){
+      setStatus('Torn API error: ' + data.error.error, false);
+      return;
+    }
+
+    const unmatched = [];
+    let added = 0;
+
+    for(const id in data.log){
+      const entry = data.log[id];
+      const title = (entry.title || '').toLowerCase();
+      const details = entry.data || {};
+      const date = new Date(entry.timestamp * 1000).toISOString().slice(0,10);
+      const uid = 'sync-' + id;
+
+      if(ledger.some(r => r.syncId === uid)) continue; // already imported
+
+      let type = null, source = null;
+
+      if(title.includes('bazaar') && (title.includes('bought') || title.includes('purchase'))){
+        type = 'buy'; source = 'bazaar';
+      } else if(title.includes('bazaar') && (title.includes('sold') || title.includes('sale'))){
+        type = 'sell'; source = 'bazaar';
+      } else if(title.includes('item market') && (title.includes('bought') || title.includes('purchase'))){
+        type = 'buy'; source = 'itemmarket';
+      } else if(title.includes('item market') && (title.includes('sold') || title.includes('sale'))){
+        type = 'sell'; source = 'itemmarket';
+      } else if(title.includes('shop') || title.includes('store')){
+        type = 'buy'; source = 'npc';
+      }
+
+      if(!type){
+        unmatched.push({title: entry.title, timestamp: date, data: details});
+        continue;
+      }
+
+      const item = pick(details, ['item','itemname','item_name','name']) || 'Unknown item';
+      const qty = Number(pick(details, ['quantity','qty','amount'])) || 1;
+      const price = Number(pick(details, ['cost','price','worth','money','total'])) || 0;
+      const counterparty = source === 'npc' ? 'NPC' : (pick(details, ['seller','buyer','target','trader','player','username','staff']) || 'Unknown');
+
+      ledger.push({
+        syncId: uid, date, type, source, item, qty,
+        unitPrice: qty ? Math.round((price/qty)*100)/100 : price,
+        counterparty
+      });
+      added++;
+    }
+
+    document.getElementById('unmatchedBox').innerHTML = unmatched.length
+      ? unmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
+      : 'None — everything matched.';
+
+    saveLedger();
+    setStatus(`Synced. ${added} new entries added, ${unmatched.length} unmatched (see below).`, true);
+
+  }catch(err){
+    setStatus('Fetch failed: ' + err.message + '. Check your key and connection.', false);
+  }
+}
+
+function addManualRow(){
+  const type = document.getElementById('manType').value;
+  const source = document.getElementById('manSource').value;
+  const item = document.getElementById('manItem').value.trim();
+  const qty = Number(document.getElementById('manQty').value);
+  const unitPrice = Number(document.getElementById('manPrice').value);
+  const counterparty = document.getElementById('manCounterparty').value.trim() || (source === 'npc' ? 'NPC' : 'Unknown');
+
+  if(!item || !qty || !unitPrice){
+    alert('Fill in item, quantity, and unit price.');
+    return;
+  }
+
+  ledger.push({
+    syncId: 'manual-' + Date.now(),
+    date: new Date().toISOString().slice(0,10),
+    type, source, item, qty, unitPrice, counterparty
+  });
+
+  document.getElementById('manItem').value = '';
+  document.getElementById('manQty').value = '';
+  document.getElementById('manPrice').value = '';
+  document.getElementById('manCounterparty').value = '';
+
+  saveLedger();
+}
+
+function deleteRow(syncId){
+  ledger = ledger.filter(r => r.syncId !== syncId);
+  saveLedger();
+}
+
+function avgCost(item){
+  const buys = ledger.filter(r => r.type === 'buy' && r.item.toLowerCase() === item.toLowerCase());
+  const totalQty = buys.reduce((s,r) => s + r.qty, 0);
+  const totalCost = buys.reduce((s,r) => s + r.qty * r.unitPrice, 0);
+  return totalQty ? totalCost / totalQty : null;
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function render(){
+  const body = document.getElementById('ledgerBody');
+  const empty = document.getElementById('emptyMsg');
+  body.innerHTML = '';
+
+  if(ledger.length === 0){
+    empty.style.display = 'block';
+    document.getElementById('totalProfit').textContent = '$0';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const sorted = [...ledger].sort((a,b) => a.date.localeCompare(b.date));
+  let totalProfit = 0;
+
+  for(const row of sorted){
+    const total = row.qty * row.unitPrice;
+    let profitCell = '—';
+    if(row.type === 'sell'){
+      const cost = avgCost(row.item);
+      if(cost !== null){
+        const profit = (row.unitPrice - cost) * row.qty;
+        totalProfit += profit;
+        profitCell = `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>`;
+      } else {
+        profitCell = `<span class="tag">no cost data</span>`;
+      }
+    }
+
+    body.innerHTML += `<tr>
+      <td>${row.date}</td>
+      <td><span class="tag">${row.type.toUpperCase()}</span></td>
+      <td>${row.source}</td>
+      <td>${escapeHtml(row.item)}</td>
+      <td>${row.qty}</td>
+      <td>$${row.unitPrice.toFixed(2)}</td>
+      <td>$${total.toFixed(2)}</td>
+      <td>${escapeHtml(row.counterparty)}</td>
+      <td>${profitCell}</td>
+      <td><button class="small secondary" onclick="deleteRow('${row.syncId}')">✕</button></td>
+    </tr>`;
+  }
+
+  document.getElementById('totalProfit').textContent =
+    (totalProfit >= 0 ? '+$' : '-$') + Math.abs(totalProfit).toFixed(2);
+  document.getElementById('totalProfit').style.color = totalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+}
+
+function exportLedger(){
+  const blob = new Blob([JSON.stringify(ledger, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'torn-ledger-backup.json';
+  a.click();
+}
+
+function importLedger(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const imported = JSON.parse(e.target.result);
+      if(!Array.isArray(imported)) throw new Error('bad format');
+      ledger = imported;
+      saveLedger();
+      setStatus('Ledger imported.', true);
+    }catch(err){
+      setStatus('Import failed: file is not a valid ledger export.', false);
+    }
+  };
+  reader.readAsText(file);
+}
+
+render();
+</script>
+</body>
+</html>
