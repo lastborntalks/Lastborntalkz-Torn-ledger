@@ -43,7 +43,18 @@
     font-family: 'Inter', -apple-system, Roboto, "Segoe UI", sans-serif;
     padding: 16px;
     padding-bottom: 80px;
+    position: relative;
   }
+  #skyline{
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    width: 100%;
+    height: 220px;
+    z-index: -1;
+    opacity: 0.08;
+    pointer-events: none;
+  }
+  #skyline rect, #skyline polygon{ fill: var(--text); }
   h1{
     font-size: 1.3rem;
     letter-spacing: 0.03em;
@@ -158,6 +169,33 @@
 </head>
 <body>
 
+<svg id="skyline" viewBox="0 0 400 100" preserveAspectRatio="xMidYMax slice">
+  <rect x="0" y="55" width="18" height="45"></rect>
+  <rect x="20" y="35" width="14" height="65"></rect>
+  <rect x="36" y="60" width="20" height="40"></rect>
+  <rect x="58" y="20" width="16" height="80"></rect>
+  <rect x="76" y="45" width="12" height="55"></rect>
+  <rect x="90" y="50" width="22" height="50"></rect>
+  <polygon points="112,40 124,40 118,25"></polygon>
+  <rect x="112" y="40" width="12" height="60"></rect>
+  <rect x="126" y="15" width="18" height="85"></rect>
+  <rect x="146" y="55" width="14" height="45"></rect>
+  <rect x="162" y="30" width="20" height="70"></rect>
+  <rect x="184" y="48" width="16" height="52"></rect>
+  <rect x="202" y="60" width="12" height="40"></rect>
+  <rect x="216" y="10" width="16" height="90"></rect>
+  <polygon points="216,10 232,10 224,-5"></polygon>
+  <rect x="234" y="42" width="18" height="58"></rect>
+  <rect x="254" y="58" width="14" height="42"></rect>
+  <rect x="270" y="25" width="20" height="75"></rect>
+  <rect x="292" y="50" width="16" height="50"></rect>
+  <rect x="310" y="38" width="12" height="62"></rect>
+  <rect x="324" y="55" width="20" height="45"></rect>
+  <rect x="346" y="20" width="16" height="80"></rect>
+  <rect x="364" y="48" width="14" height="52"></rect>
+  <rect x="380" y="60" width="20" height="40"></rect>
+</svg>
+
 <button id="themeToggle" onclick="cycleTheme()" title="Appearance"></button>
 
 <h1>TORN LEDGER</h1>
@@ -255,6 +293,12 @@
       <input type="file" id="importFile" style="display:none" onchange="importLedger(event)">
     </div>
   </div>
+  <div class="row-buttons" style="margin-bottom:8px;">
+    <button class="small secondary" onclick="setLedgerFilter('all')" style="flex:1;">All time</button>
+    <button class="small secondary" onclick="setLedgerFilter('today')" style="flex:1;">Today</button>
+    <button class="small secondary" onclick="setLedgerFilter('yesterday')" style="flex:1;">Yesterday</button>
+  </div>
+  <input type="date" id="ledgerFilterInput" onchange="setLedgerFilter('pick')" style="margin-bottom:10px;">
   <div class="scroll-x">
     <table id="ledgerTable">
       <thead>
@@ -406,10 +450,11 @@ function saveLedger(){
 const IGNORE_PATTERNS = [
   'bazaar add','bazaar favorite','bazaar remove',
   'hospital','successful login','api key add','api key remove',
-  'trade money','trade expire','trade item','trade cancel',
+  'trade expire','trade cancel',
   'travel depart','travel arrive','travel fee',
   'gym train','item use','attack ','crime ','stock buy','stock sell',
-  'racket','organized crime','chain','education','medical','mail','hunting'
+  'racket','organized crime','chain','education','medical','mail','hunting',
+  'forums','faction deposit','message ','faction newsletter'
 ];
 
 function isNoise(title){
@@ -467,6 +512,7 @@ function ingestLogBatch(logObj, catalog){
   const unmatched = [];
   let added = 0;
   let oldestTs = null;
+  const tradeGroups = {}; // parsed_trade_id -> accumulated info across scattered log lines
 
   for(const id in logObj){
     const entry = logObj[id];
@@ -478,6 +524,21 @@ function ingestLogBatch(logObj, catalog){
     if(oldestTs === null || ts < oldestTs) oldestTs = ts;
 
     if(isNoise(title)) continue;
+
+    // Trades are scattered across several log lines sharing the same trade id —
+    // collect them here, then reconstruct actual buy/sell rows after this loop.
+    if(title.startsWith('trade')){
+      const tid = d.parsed_trade_id || d.trade_id;
+      if(!tid) continue;
+      if(!tradeGroups[tid]) tradeGroups[tid] = { date, ts, counterpartyId: d.user, outgoing: [], incoming: [], moneyAdd: 0, moneyRemove: 0, completed: false };
+      const g = tradeGroups[tid];
+      if(title.includes('completed')) g.completed = true;
+      if(title.includes('initiate outgoing') && d.description) g.outgoing.push(d.description);
+      if(title.includes('initiate incoming') && d.description) g.incoming.push(d.description);
+      if(title === 'trade money add') g.moneyAdd += Number(d.money) || 0;
+      if(title === 'trade money remove') g.moneyRemove += Number(d.money) || 0;
+      continue;
+    }
 
     let type = null, source = null, counterpartyId = null, counterparty = 'Unknown';
 
@@ -516,6 +577,45 @@ function ingestLogBatch(logObj, catalog){
         counterparty,
         counterpartyId: counterpartyId || null,
         areaCode: source === 'abroad' ? String(d.area) : null
+      });
+      added++;
+    }
+  }
+
+  // Reconstruct completed trades: figure out which side gave items vs money,
+  // count repeated item names in the description as quantity, and split
+  // multi-item trades into one ledger row per distinct item.
+  for(const tid in tradeGroups){
+    const g = tradeGroups[tid];
+    if(!g.completed) continue; // ignore trades that never finished
+
+    let type, moneyTotal, descList;
+    if(g.outgoing.length && g.moneyAdd > 0){
+      type = 'sell'; moneyTotal = g.moneyAdd; descList = g.outgoing;
+    } else if(g.incoming.length && g.moneyRemove > 0){
+      type = 'buy'; moneyTotal = g.moneyRemove; descList = g.incoming;
+    } else {
+      continue; // item-for-item trade or no money involved — nothing to price
+    }
+
+    const counts = {};
+    descList.forEach(name => { counts[name] = (counts[name] || 0) + 1; });
+    const totalUnits = Object.values(counts).reduce((a,b) => a+b, 0);
+
+    for(const itemName2 in counts){
+      const qty = counts[itemName2];
+      const uid = 'trade-' + tid + '-' + itemName2;
+      if(ledger.some(r => r.syncId === uid)) continue;
+
+      ledger.push({
+        syncId: uid, date: g.date, ts: g.ts, type, source: 'trade',
+        item: itemName2,
+        qty,
+        unitPrice: Math.round((moneyTotal * (qty/totalUnits) / qty) * 100) / 100,
+        counterparty: 'Player #' + g.counterpartyId,
+        counterpartyId: g.counterpartyId || null,
+        areaCode: null,
+        qtyEstimated: true // flags that quantity was inferred from description, not a hard number
       });
       added++;
     }
@@ -679,42 +779,72 @@ function computeSellProfit(row){
   return { profit: (row.unitPrice - effectiveCost) * row.qty, hasCostRecord };
 }
 
+let ledgerFilterDate = null; // null = show all days in the table
+
+function setLedgerFilter(which){
+  const input = document.getElementById('ledgerFilterInput');
+  const today = new Date();
+  if(which === 'today'){
+    ledgerFilterDate = today.toISOString().slice(0,10);
+  } else if(which === 'yesterday'){
+    const y = new Date(today); y.setDate(y.getDate() - 1);
+    ledgerFilterDate = y.toISOString().slice(0,10);
+  } else if(which === 'all'){
+    ledgerFilterDate = null;
+  } else {
+    ledgerFilterDate = input.value || null;
+  }
+  input.value = ledgerFilterDate || '';
+  render();
+}
+
 function render(){
   const body = document.getElementById('ledgerBody');
   const empty = document.getElementById('emptyMsg');
   body.innerHTML = '';
 
+  const visible = ledgerFilterDate ? ledger.filter(r => r.date === ledgerFilterDate) : ledger;
+
   if(ledger.length === 0){
     empty.style.display = 'block';
+    empty.textContent = 'No entries yet. Sync or add manually above.';
     document.getElementById('totalProfit').textContent = '$0';
     renderDayProfit();
     return;
   }
-  empty.style.display = 'none';
+  if(visible.length === 0){
+    empty.style.display = 'block';
+    empty.textContent = `No transactions on ${ledgerFilterDate}.`;
+  } else {
+    empty.style.display = 'none';
+  }
 
-  const sorted = [...ledger].sort((a,b) => {
+  const sorted = [...visible].sort((a,b) => {
     const tA = a.ts || Date.parse(a.date) || 0;
     const tB = b.ts || Date.parse(b.date) || 0;
     return tB - tA; // newest first
   });
+
+  // Total profit/loss always reflects ALL-TIME data, regardless of the table filter above
   let totalProfit = 0;
+  ledger.filter(r => r.type === 'sell').forEach(row => { totalProfit += computeSellProfit(row).profit; });
 
   for(const row of sorted){
     const total = row.qty * row.unitPrice;
     let profitCell = '—';
     if(row.type === 'sell'){
       const { profit, hasCostRecord } = computeSellProfit(row);
-      totalProfit += profit;
       const noteTag = hasCostRecord ? '' : ` <span class="tag" title="No matching buy in your ledger — full sale counted as profit">no buy record</span>`;
       profitCell = `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>${noteTag}`;
     }
+    const qtyTag = row.qtyEstimated ? ` <span class="tag" title="Torn's trade log doesn't give an exact quantity — estimated by counting repeated item names in the trade description">est.</span>` : '';
 
     body.innerHTML += `<tr>
       <td>${row.date}</td>
       <td><span class="tag ${row.type}">${row.type.toUpperCase()}</span></td>
       <td>${row.source}</td>
       <td>${escapeHtml(row.item)}</td>
-      <td>${row.qty}</td>
+      <td>${row.qty}${qtyTag}</td>
       <td>$${row.unitPrice.toFixed(2)}</td>
       <td>$${total.toFixed(2)}</td>
       <td>${counterpartyDisplay(row)}</td>
