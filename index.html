@@ -265,7 +265,6 @@ if(Object.keys(areaLabels).length === 0){
 })();
 let nameCache = JSON.parse(localStorage.getItem('tornNameCache') || '{}');
 document.getElementById('apiKey').value = localStorage.getItem('tornApiKey') || '';
-renderAreaList();
 
 function applyTheme(pref){
   localStorage.setItem('tornTheme', pref);
@@ -276,16 +275,9 @@ function applyTheme(pref){
   document.documentElement.setAttribute('data-theme', effective);
 }
 
-const savedTheme = localStorage.getItem('tornTheme') || 'system';
-document.getElementById('themeSelect').value = savedTheme;
-applyTheme(savedTheme);
 window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
   if((localStorage.getItem('tornTheme') || 'system') === 'system') applyTheme('system');
 });
-
-// Show last-known balance immediately from cache, before any sync
-const cachedBalance = JSON.parse(localStorage.getItem('tornBalance') || 'null');
-if(cachedBalance) renderBalance(cachedBalance);
 
 function renderBalance(bal){
   document.getElementById('balanceAmount').textContent = '$' + Number(bal.money_onhand).toLocaleString();
@@ -638,6 +630,15 @@ function importLedger(event){
   };
   reader.readAsText(file);
 }
+// --- Initialization: runs last, after every function/const above is defined ---
+renderAreaList();
+
+const savedTheme = localStorage.getItem('tornTheme') || 'system';
+document.getElementById('themeSelect').value = savedTheme;
+applyTheme(savedTheme);
+
+const cachedBalance = JSON.parse(localStorage.getItem('tornBalance') || 'null');
+if(cachedBalance) renderBalance(cachedBalance);
 
 render();
 </script>
