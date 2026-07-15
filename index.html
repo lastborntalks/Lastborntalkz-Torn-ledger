@@ -143,6 +143,7 @@
     <option value="bazaar">Bazaar</option>
     <option value="itemmarket">Item Market</option>
     <option value="npc">NPC Shop</option>
+    <option value="abroad">Foreign Store</option>
   </select>
   <input type="text" id="manItem" placeholder="Item name">
   <input type="number" id="manQty" placeholder="Quantity">
@@ -202,20 +203,55 @@ function saveLedger(){
   render();
 }
 
-function pick(obj, keys){
-  for(const k of keys){
-    if(obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+// Titles that are known noise — never transactions, skip silently, never show as unmatched
+const IGNORE_PATTERNS = [
+  'bazaar add','bazaar favorite','bazaar remove',
+  'hospital','successful login','api key add','api key remove',
+  'trade money','trade expire','trade item','trade cancel',
+  'travel depart','travel arrive','travel fee',
+  'gym train','item use','attack ','crime ','stock buy','stock sell',
+  'racket','organized crime','chain','education','medical','mail','hunting'
+];
+
+function isNoise(title){
+  return IGNORE_PATTERNS.some(p => title.includes(p));
+}
+
+async function getItemCatalog(apiKey){
+  const cached = localStorage.getItem('tornItemCatalog');
+  const cachedAt = Number(localStorage.getItem('tornItemCatalogAt') || 0);
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+  if(cached && (Date.now() - cachedAt) < oneWeek){
+    return JSON.parse(cached);
   }
-  return null;
+  const res = await fetch('https://api.torn.com/torn/?selections=items&key=' + encodeURIComponent(apiKey));
+  const data = await res.json();
+  if(data.error || !data.items) return cached ? JSON.parse(cached) : {};
+  const map = {};
+  for(const id in data.items){ map[id] = data.items[id].name; }
+  localStorage.setItem('tornItemCatalog', JSON.stringify(map));
+  localStorage.setItem('tornItemCatalogAt', String(Date.now()));
+  return map;
+}
+
+function itemName(catalog, id){
+  return catalog[id] || ('Item #' + id);
+}
+
+function playerLink(id){
+  return `<a href="https://www.torn.com/profiles.php?XID=${id}" target="_blank" style="color:var(--gold)">#${id}</a>`;
 }
 
 async function syncFromTorn(){
   const apiKey = document.getElementById('apiKey').value.trim();
   if(!apiKey){ setStatus('Enter your API key first.', false); return; }
   localStorage.setItem('tornApiKey', apiKey);
-  setStatus('Syncing…');
+  setStatus('Fetching item catalog…');
 
   try{
+    const catalog = await getItemCatalog(apiKey);
+
+    setStatus('Syncing log…');
     const res = await fetch('https://api.torn.com/user/?selections=log&key=' + encodeURIComponent(apiKey));
     const data = await res.json();
     if(data.error){
@@ -228,51 +264,59 @@ async function syncFromTorn(){
 
     for(const id in data.log){
       const entry = data.log[id];
-      const title = (entry.title || '').toLowerCase();
-      const details = entry.data || {};
+      const rawTitle = entry.title || '';
+      const title = rawTitle.toLowerCase();
+      const d = entry.data || {};
       const date = new Date(entry.timestamp * 1000).toISOString().slice(0,10);
-      const uid = 'sync-' + id;
 
-      if(ledger.some(r => r.syncId === uid)) continue; // already imported
+      if(isNoise(title)) continue;
 
-      let type = null, source = null;
+      let type = null, source = null, counterpartyId = null, counterparty = 'Unknown';
 
-      if(title.includes('bazaar') && (title.includes('bought') || title.includes('purchase'))){
-        type = 'buy'; source = 'bazaar';
-      } else if(title.includes('bazaar') && (title.includes('sold') || title.includes('sale'))){
-        type = 'sell'; source = 'bazaar';
-      } else if(title.includes('item market') && (title.includes('bought') || title.includes('purchase'))){
-        type = 'buy'; source = 'itemmarket';
-      } else if(title.includes('item market') && (title.includes('sold') || title.includes('sale'))){
-        type = 'sell'; source = 'itemmarket';
+      if(title === 'bazaar sell'){
+        type = 'sell'; source = 'bazaar'; counterpartyId = d.buyer; counterparty = 'Player #' + d.buyer;
+      } else if(title === 'bazaar buy'){
+        type = 'buy'; source = 'bazaar'; counterpartyId = d.seller; counterparty = 'Player #' + d.seller;
+      } else if(title.includes('item market') && title.includes('sell')){
+        type = 'sell'; source = 'itemmarket'; counterparty = 'Item Market';
+      } else if(title.includes('item market') && title.includes('buy')){
+        type = 'buy'; source = 'itemmarket'; counterparty = 'Item Market';
       } else if(title.includes('shop') || title.includes('store')){
-        type = 'buy'; source = 'npc';
+        type = 'buy'; source = 'npc'; counterparty = 'NPC';
+      } else if(title === 'item abroad buy'){
+        type = 'buy'; source = 'abroad'; counterparty = 'Foreign Store (Area ' + d.area + ')';
       }
 
       if(!type){
-        unmatched.push({title: entry.title, timestamp: date, data: details});
+        unmatched.push({title: rawTitle, timestamp: date, data: d});
         continue;
       }
 
-      const item = pick(details, ['item','itemname','item_name','name']) || 'Unknown item';
-      const qty = Number(pick(details, ['quantity','qty','amount'])) || 1;
-      const price = Number(pick(details, ['cost','price','worth','money','total'])) || 0;
-      const counterparty = source === 'npc' ? 'NPC' : (pick(details, ['seller','buyer','target','trader','player','username','staff']) || 'Unknown');
+      const items = Array.isArray(d.items) ? d.items : [{id: d.item, qty: d.quantity || 1}];
+      const unitCost = Number(d.cost_each ?? d.cost ?? d.price ?? 0);
 
-      ledger.push({
-        syncId: uid, date, type, source, item, qty,
-        unitPrice: qty ? Math.round((price/qty)*100)/100 : price,
-        counterparty
-      });
-      added++;
+      for(const it of items){
+        const uid = 'sync-' + id + '-' + it.id;
+        if(ledger.some(r => r.syncId === uid)) continue;
+
+        ledger.push({
+          syncId: uid, date, type, source,
+          item: itemName(catalog, it.id),
+          qty: Number(it.qty) || 1,
+          unitPrice: unitCost,
+          counterparty,
+          counterpartyId: counterpartyId || null
+        });
+        added++;
+      }
     }
 
     document.getElementById('unmatchedBox').innerHTML = unmatched.length
       ? unmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
-      : 'None — everything matched.';
+      : 'None — everything recognized matched a known pattern.';
 
     saveLedger();
-    setStatus(`Synced. ${added} new entries added, ${unmatched.length} unmatched (see below).`, true);
+    setStatus(`Synced. ${added} new line(s) added, ${unmatched.length} unrecognized (see below).`, true);
 
   }catch(err){
     setStatus('Fetch failed: ' + err.message + '. Check your key and connection.', false);
@@ -359,7 +403,7 @@ function render(){
       <td>${row.qty}</td>
       <td>$${row.unitPrice.toFixed(2)}</td>
       <td>$${total.toFixed(2)}</td>
-      <td>${escapeHtml(row.counterparty)}</td>
+      <td>${row.counterpartyId ? playerLink(row.counterpartyId) : escapeHtml(row.counterparty)}</td>
       <td>${profitCell}</td>
       <td><button class="small secondary" onclick="deleteRow('${row.syncId}')">✕</button></td>
     </tr>`;
