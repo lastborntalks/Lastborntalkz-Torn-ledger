@@ -319,10 +319,27 @@ function saveAreaLabel(){
   saveLedger();
 }
 
+// Maps common country names to ISO codes, so flags can be computed automatically
+// for any country the user teaches the app via the area-code field.
+const COUNTRY_TO_ISO = {
+  'mexico':'MX','cayman islands':'KY','canada':'CA','hawaii':'US','united kingdom':'GB','uk':'GB',
+  'argentina':'AR','switzerland':'CH','japan':'JP','china':'CN','uae':'AE','united arab emirates':'AE',
+  'south africa':'ZA','nigeria':'NG','united states':'US','usa':'US','germany':'DE','france':'FR',
+  'italy':'IT','spain':'ES','brazil':'BR','india':'IN','australia':'AU','russia':'RU','egypt':'EG',
+  'kenya':'KE','ghana':'GH','ireland':'IE','portugal':'PT','netherlands':'NL','sweden':'SE',
+  'norway':'NO','denmark':'DK','poland':'PL','south korea':'KR','thailand':'TH','vietnam':'VN'
+};
+
+function flagForCountry(name){
+  const iso = COUNTRY_TO_ISO[(name||'').trim().toLowerCase()];
+  if(!iso) return '';
+  // Converts a 2-letter ISO code into its flag emoji using regional indicator symbols
+  return iso.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
+}
 function renderAreaList(){
   const entries = Object.entries(areaLabels);
   document.getElementById('areaListBox').innerHTML = entries.length
-    ? 'Known: ' + entries.map(([c,n]) => `Area ${c} = ${n}`).join(' · ')
+    ? 'Known: ' + entries.map(([c,n]) => `Area ${c} = ${flagForCountry(n)} ${n}`).join(' · ')
     : 'None saved yet.';
 }
 
@@ -535,6 +552,15 @@ function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+function counterpartyDisplay(row){
+  if(row.counterpartyId) return playerLink(row.counterpartyId);
+  if(row.source === 'abroad'){
+    const flag = flagForCountry(row.counterparty);
+    return (flag ? flag + ' ' : '') + escapeHtml(row.counterparty);
+  }
+  return escapeHtml(row.counterparty);
+}
+
 function render(){
   const body = document.getElementById('ledgerBody');
   const empty = document.getElementById('emptyMsg');
@@ -559,13 +585,12 @@ function render(){
     let profitCell = '—';
     if(row.type === 'sell'){
       const cost = avgCost(row.item);
-      if(cost !== null){
-        const profit = (row.unitPrice - cost) * row.qty;
-        totalProfit += profit;
-        profitCell = `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>`;
-      } else {
-        profitCell = `<span class="tag">no cost data</span>`;
-      }
+      const hasCostRecord = cost !== null;
+      const effectiveCost = hasCostRecord ? cost : 0; // no buy on record = treated as free (crime drop, pre-existing stock, etc.)
+      const profit = (row.unitPrice - effectiveCost) * row.qty;
+      totalProfit += profit;
+      const noteTag = hasCostRecord ? '' : ` <span class="tag" title="No matching buy in your ledger — full sale counted as profit">no buy record</span>`;
+      profitCell = `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>${noteTag}`;
     }
 
     body.innerHTML += `<tr>
@@ -576,7 +601,7 @@ function render(){
       <td>${row.qty}</td>
       <td>$${row.unitPrice.toFixed(2)}</td>
       <td>$${total.toFixed(2)}</td>
-      <td>${row.counterpartyId ? playerLink(row.counterpartyId) : escapeHtml(row.counterparty)}</td>
+      <td>${counterpartyDisplay(row)}</td>
       <td>${profitCell}</td>
       <td><button class="small secondary" onclick="deleteRow('${row.syncId}')">✕</button></td>
     </tr>`;
