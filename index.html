@@ -452,7 +452,7 @@ const IGNORE_PATTERNS = [
   'travel depart','travel arrive','travel fee',
   'gym train','item use','attack ','crime ','stock buy','stock sell',
   'racket','organized crime','chain','education','medical','mail','hunting',
-  'job pay','items equip','items unequip','item equip','item unequip',
+  'job pay','items equip','items unequip','item equip','item unequip','job special',
   'forums','faction deposit','message ','faction newsletter'
 ];
 
@@ -461,8 +461,8 @@ function isNoise(title){
 }
 
 async function getItemCatalog(apiKey){
-  const cached = localStorage.getItem('tornItemCatalog');
-  const cachedAt = Number(localStorage.getItem('tornItemCatalogAt') || 0);
+  const cached = localStorage.getItem('tornItemCatalogV2');
+  const cachedAt = Number(localStorage.getItem('tornItemCatalogV2At') || 0);
   const oneDay = 24 * 60 * 60 * 1000; // market_value refreshes daily per Torn's own docs, so cache no longer than that
   if(cached && (Date.now() - cachedAt) < oneDay){
     return JSON.parse(cached);
@@ -474,8 +474,8 @@ async function getItemCatalog(apiKey){
   for(const id in data.items){
     map[id] = { name: data.items[id].name, value: Number(data.items[id].market_value) || 0 };
   }
-  localStorage.setItem('tornItemCatalog', JSON.stringify(map));
-  localStorage.setItem('tornItemCatalogAt', String(Date.now()));
+  localStorage.setItem('tornItemCatalogV2', JSON.stringify(map));
+  localStorage.setItem('tornItemCatalogV2At', String(Date.now()));
   return map;
 }
 
