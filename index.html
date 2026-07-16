@@ -463,22 +463,28 @@ function isNoise(title){
 async function getItemCatalog(apiKey){
   const cached = localStorage.getItem('tornItemCatalog');
   const cachedAt = Number(localStorage.getItem('tornItemCatalogAt') || 0);
-  const oneWeek = 7 * 24 * 60 * 60 * 1000;
-  if(cached && (Date.now() - cachedAt) < oneWeek){
+  const oneDay = 24 * 60 * 60 * 1000; // market_value refreshes daily per Torn's own docs, so cache no longer than that
+  if(cached && (Date.now() - cachedAt) < oneDay){
     return JSON.parse(cached);
   }
   const res = await fetch('https://api.torn.com/torn/?selections=items&key=' + encodeURIComponent(apiKey));
   const data = await res.json();
   if(data.error || !data.items) return cached ? JSON.parse(cached) : {};
   const map = {};
-  for(const id in data.items){ map[id] = data.items[id].name; }
+  for(const id in data.items){
+    map[id] = { name: data.items[id].name, value: Number(data.items[id].market_value) || 0 };
+  }
   localStorage.setItem('tornItemCatalog', JSON.stringify(map));
   localStorage.setItem('tornItemCatalogAt', String(Date.now()));
   return map;
 }
 
 function itemName(catalog, id){
-  return catalog[id] || ('Item #' + id);
+  return catalog[id]?.name || ('Item #' + id);
+}
+
+function itemValue(catalog, id){
+  return catalog[id]?.value || 0;
 }
 
 async function resolveNames(apiKey){
@@ -635,26 +641,40 @@ function ingestLogBatch(logObj, catalog){
       continue; // item-for-item trade, or no money on either side — nothing to price
     }
 
+    // Weight the split by each item's actual market value, not just quantity —
+    // a Xanax and a cheap flower in the same trade should NOT get an equal cut
+    // of the total money just because they're both "1 item."
+    const weights = items.map(it => {
+      const qty = Number(it.qty) || 1;
+      const value = it.id != null ? itemValue(catalog, it.id) : 0;
+      return qty * value;
+    });
+    const totalWeight = weights.reduce((a,b) => a+b, 0);
     const totalUnits = items.reduce((sum, it) => sum + (Number(it.qty) || 1), 0);
+    const usingValueWeights = totalWeight > 0; // falls back to equal-quantity split if no value data at all
 
-    for(const it of items){
+    items.forEach((it, i) => {
       const qty = Number(it.qty) || 1;
       const displayName = it.name || itemName(catalog, it.id);
       const uid = 'trade-' + tid + '-' + (it.id ?? it.name);
-      if(ledger.some(r => r.syncId === uid)) continue;
+      if(ledger.some(r => r.syncId === uid)) return;
+
+      const share = usingValueWeights ? (weights[i] / totalWeight) : (qty / totalUnits);
+      const unitPrice = Math.round((moneyTotal * share / qty) * 100) / 100;
 
       ledger.push({
         syncId: uid, date: g.date, ts: g.ts, type, source: 'trade',
         item: displayName,
         qty,
-        unitPrice: Math.round((moneyTotal * (qty/totalUnits) / qty) * 100) / 100,
+        unitPrice,
         counterparty: 'Player #' + g.counterpartyId,
         counterpartyId: g.counterpartyId || null,
         areaCode: null,
-        qtyEstimated: estimated // true only for the legacy fallback path; the authoritative summary gives exact quantities
+        qtyEstimated: estimated, // true only for the legacy fallback path; the authoritative summary gives exact quantities
+        priceEstimated: !usingValueWeights && items.length > 1 // flags an equal-split fallback when no market value was available
       });
       added++;
-    }
+    });
   }
 
   return { added, unmatched, oldestTs };
@@ -887,6 +907,7 @@ function render(){
       profitCell = `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>${noteTag}`;
     }
     const qtyTag = row.qtyEstimated ? ` <span class="tag" title="Torn's trade log doesn't give an exact quantity — estimated by counting repeated item names in the trade description">est.</span>` : '';
+    const priceTag = row.priceEstimated ? ` <span class="tag" title="No market value found for one of these items, so this trade's total was split evenly instead of by value">split</span>` : '';
     const times = formatRowTime(row);
 
     body.innerHTML += `<tr>
@@ -897,7 +918,7 @@ function render(){
       <td>${row.source}</td>
       <td>${escapeHtml(row.item)}</td>
       <td>${row.qty}${qtyTag}</td>
-      <td>$${row.unitPrice.toFixed(2)}</td>
+      <td>$${row.unitPrice.toFixed(2)}${priceTag}</td>
       <td>$${total.toFixed(2)}</td>
       <td>${counterpartyDisplay(row)}</td>
       <td>${profitCell}</td>
