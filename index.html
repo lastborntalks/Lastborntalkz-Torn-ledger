@@ -524,21 +524,43 @@ function ingestLogBatch(logObj, catalog){
 
     if(isNoise(title)) continue;
 
-    // Trades are scattered across several log lines sharing the same trade id —
-    // collect them here, then reconstruct actual buy/sell rows after this loop.
+    // Trades are scattered across several log lines sharing the same trade id.
+    // Torn gives an authoritative FINAL summary line for each side once a trade
+    // locks in — that's what we use. Everything else (accepted, items/money
+    // add-remove, "other user" staging) is just live back-and-forth negotiation
+    // before the deal settles, and can go up or down, so it's ignored as noise.
     if(title.startsWith('trade')){
       const tid = d.parsed_trade_id || d.trade_id;
       if(!tid){ unmatched.push({title: rawTitle, timestamp: date, data: d}); continue; }
-      if(!tradeGroups[tid]) tradeGroups[tid] = { date, ts, counterpartyId: d.user, outgoing: [], incoming: [], moneyAdd: 0, moneyRemove: 0, completed: false };
+      if(!tradeGroups[tid]) tradeGroups[tid] = {
+        date, ts, counterpartyId: d.user,
+        itemsOut: null, itemsIn: null, moneyIn: 0, moneyOut: 0,
+        legacyOut: [], legacyIn: [], legacyMoneyIn: 0, legacyMoneyOut: 0,
+        completed: false
+      };
       const g = tradeGroups[tid];
       let recognized = false;
-      if(title.includes('completed')){ g.completed = true; recognized = true; }
-      if(title.includes('initiate outgoing') && d.description){ g.outgoing.push(d.description); recognized = true; }
-      if(title.includes('initiate incoming') && d.description){ g.incoming.push(d.description); recognized = true; }
-      if(title === 'trade money add'){ g.moneyAdd += Number(d.money) || 0; recognized = true; }
-      if(title === 'trade money remove'){ g.moneyRemove += Number(d.money) || 0; recognized = true; }
-      // Anything trade-related I don't have a pattern for yet — surface it instead of
-      // silently dropping it, so it can be checked and added rather than losing data.
+
+      if(title === 'trade completed'){ g.completed = true; recognized = true; }
+      if(title === 'trade items outgoing' && Array.isArray(d.items)){ g.itemsOut = d.items; recognized = true; }
+      if(title === 'trade items incoming' && Array.isArray(d.items)){ g.itemsIn = d.items; recognized = true; }
+      if(title === 'trade money incoming'){ g.moneyIn = Number(d.money) || 0; recognized = true; }
+      if(title === 'trade money outgoing'){ g.moneyOut = Number(d.money) || 0; recognized = true; }
+
+      // Known negotiation noise — real, understood, but deliberately not used for the math
+      if(['trade accepted','trade items add','trade items remove',
+          'trade items add other user','trade items remove other user',
+          'trade money add other user','trade money remove other user'].includes(title)){
+        recognized = true;
+      }
+
+      // Legacy fallback fields (older/simpler single-item trades), used only if
+      // the authoritative summary above never shows up for this trade.
+      if(title.includes('initiate outgoing') && d.description){ g.legacyOut.push(d.description); recognized = true; }
+      if(title.includes('initiate incoming') && d.description){ g.legacyIn.push(d.description); recognized = true; }
+      if(title === 'trade money add'){ g.legacyMoneyIn += Number(d.money) || 0; recognized = true; }
+      if(title === 'trade money remove'){ g.legacyMoneyOut += Number(d.money) || 0; recognized = true; }
+
       if(!recognized) unmatched.push({title: rawTitle, timestamp: date, data: d});
       continue;
     }
@@ -585,40 +607,51 @@ function ingestLogBatch(logObj, catalog){
     }
   }
 
-  // Reconstruct completed trades: figure out which side gave items vs money,
-  // count repeated item names in the description as quantity, and split
-  // multi-item trades into one ledger row per distinct item.
+  // Reconstruct completed trades using the authoritative final summary Torn provides
+  // (items outgoing/incoming already correctly totaled, money incoming/outgoing already
+  // the final settled amount) — falling back to the older description-based guess only
+  // if that summary never showed up for a given trade.
   for(const tid in tradeGroups){
     const g = tradeGroups[tid];
     if(!g.completed) continue; // ignore trades that never finished
 
-    let type, moneyTotal, descList;
-    if(g.outgoing.length && g.moneyAdd > 0){
-      type = 'sell'; moneyTotal = g.moneyAdd; descList = g.outgoing;
-    } else if(g.incoming.length && g.moneyRemove > 0){
-      type = 'buy'; moneyTotal = g.moneyRemove; descList = g.incoming;
+    let type, moneyTotal, items, estimated = false;
+
+    if(g.itemsOut && g.moneyIn > 0){
+      type = 'sell'; moneyTotal = g.moneyIn; items = g.itemsOut;
+    } else if(g.itemsIn && g.moneyOut > 0){
+      type = 'buy'; moneyTotal = g.moneyOut; items = g.itemsIn;
+    } else if(g.legacyOut.length && g.legacyMoneyIn > 0){
+      type = 'sell'; moneyTotal = g.legacyMoneyIn; estimated = true;
+      const counts = {};
+      g.legacyOut.forEach(name => { counts[name] = (counts[name] || 0) + 1; });
+      items = Object.entries(counts).map(([name, qty]) => ({ name, qty }));
+    } else if(g.legacyIn.length && g.legacyMoneyOut > 0){
+      type = 'buy'; moneyTotal = g.legacyMoneyOut; estimated = true;
+      const counts = {};
+      g.legacyIn.forEach(name => { counts[name] = (counts[name] || 0) + 1; });
+      items = Object.entries(counts).map(([name, qty]) => ({ name, qty }));
     } else {
-      continue; // item-for-item trade or no money involved — nothing to price
+      continue; // item-for-item trade, or no money on either side — nothing to price
     }
 
-    const counts = {};
-    descList.forEach(name => { counts[name] = (counts[name] || 0) + 1; });
-    const totalUnits = Object.values(counts).reduce((a,b) => a+b, 0);
+    const totalUnits = items.reduce((sum, it) => sum + (Number(it.qty) || 1), 0);
 
-    for(const itemName2 in counts){
-      const qty = counts[itemName2];
-      const uid = 'trade-' + tid + '-' + itemName2;
+    for(const it of items){
+      const qty = Number(it.qty) || 1;
+      const displayName = it.name || itemName(catalog, it.id);
+      const uid = 'trade-' + tid + '-' + (it.id ?? it.name);
       if(ledger.some(r => r.syncId === uid)) continue;
 
       ledger.push({
         syncId: uid, date: g.date, ts: g.ts, type, source: 'trade',
-        item: itemName2,
+        item: displayName,
         qty,
         unitPrice: Math.round((moneyTotal * (qty/totalUnits) / qty) * 100) / 100,
         counterparty: 'Player #' + g.counterpartyId,
         counterpartyId: g.counterpartyId || null,
         areaCode: null,
-        qtyEstimated: true // flags that quantity was inferred from description, not a hard number
+        qtyEstimated: estimated // true only for the legacy fallback path; the authoritative summary gives exact quantities
       });
       added++;
     }
