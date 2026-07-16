@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg: #0b0b0f;
-    --bg-2: #16161c;
+    --bg-2: rgba(22,22,28,0.90);
     --blue: #4d8dff;
     --blue-dim: #2c4f99;
     --red: #ff4d67;
@@ -23,7 +23,7 @@
   }
   [data-theme="light"]{
     --bg: #f7f7f9;
-    --bg-2: #ffffff;
+    --bg-2: rgba(255,255,255,0.90);
     --blue: #1256e0;
     --blue-dim: #a9c1f5;
     --red: #d61f3c;
@@ -55,8 +55,8 @@
     pointer-events: none;
     opacity: 0.16;
   }
-  [data-theme="dark"] #cityBg{ background-image: url('images/file_00000000bd8471f488eee3779440d17f.png'); }
-  [data-theme="light"] #cityBg{ background-image: url('images/file_00000000caa071f4b6941bd4737652b7.png'); opacity: 0.12; }
+  [data-theme="dark"] #cityBg{ background-image: url('images/file_00000000bd8471f488eee3779440d17f.png'); opacity: 0.28; }
+  [data-theme="light"] #cityBg{ background-image: url('images/file_00000000caa071f4b6941bd4737652b7.png'); opacity: 0.20; }
   h1{
     font-size: 1.3rem;
     letter-spacing: 0.03em;
@@ -528,14 +528,18 @@ function ingestLogBatch(logObj, catalog){
     // collect them here, then reconstruct actual buy/sell rows after this loop.
     if(title.startsWith('trade')){
       const tid = d.parsed_trade_id || d.trade_id;
-      if(!tid) continue;
+      if(!tid){ unmatched.push({title: rawTitle, timestamp: date, data: d}); continue; }
       if(!tradeGroups[tid]) tradeGroups[tid] = { date, ts, counterpartyId: d.user, outgoing: [], incoming: [], moneyAdd: 0, moneyRemove: 0, completed: false };
       const g = tradeGroups[tid];
-      if(title.includes('completed')) g.completed = true;
-      if(title.includes('initiate outgoing') && d.description) g.outgoing.push(d.description);
-      if(title.includes('initiate incoming') && d.description) g.incoming.push(d.description);
-      if(title === 'trade money add') g.moneyAdd += Number(d.money) || 0;
-      if(title === 'trade money remove') g.moneyRemove += Number(d.money) || 0;
+      let recognized = false;
+      if(title.includes('completed')){ g.completed = true; recognized = true; }
+      if(title.includes('initiate outgoing') && d.description){ g.outgoing.push(d.description); recognized = true; }
+      if(title.includes('initiate incoming') && d.description){ g.incoming.push(d.description); recognized = true; }
+      if(title === 'trade money add'){ g.moneyAdd += Number(d.money) || 0; recognized = true; }
+      if(title === 'trade money remove'){ g.moneyRemove += Number(d.money) || 0; recognized = true; }
+      // Anything trade-related I don't have a pattern for yet — surface it instead of
+      // silently dropping it, so it can be checked and added rather than losing data.
+      if(!recognized) unmatched.push({title: rawTitle, timestamp: date, data: d});
       continue;
     }
 
