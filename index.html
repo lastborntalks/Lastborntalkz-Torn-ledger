@@ -251,39 +251,21 @@
 <div class="card">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
     <label style="margin-bottom:0;">Cash Flow (beyond item trading)</label>
-    <button class="small secondary" onclick="syncFromTorn()" title="Sync now"
+    <button class="small secondary" onclick="cfSyncClick()" id="cfSyncBtn" title="Sync now"
       style="width:28px; height:28px; padding:0; border-radius:50%; font-size:1rem; line-height:1;">⟳</button>
   </div>
+  <div id="cfSyncStatus" style="font-size:0.72rem; color:var(--text-dim); margin-bottom:6px;"></div>
   <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
-    <span style="color:var(--text-dim);">Job income</span>
+    <span style="color:var(--text-dim);">Job income (last 6 months)</span>
     <span id="cfJobIncome" style="font-weight:600;">$0</span>
   </div>
   <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
     <span style="color:var(--text-dim);">Mugging losses</span>
     <span id="cfMuggingLoss" class="profit-neg" style="font-weight:600;">-$0</span>
   </div>
-  <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
-    <span style="color:var(--text-dim);">Mugging, crime &amp; gift recovery</span>
-    <span id="cfRecovery" class="profit-pos" style="font-weight:600;">+$0</span>
-  </div>
-  <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
+  <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;">
     <span style="color:var(--text-dim);">Rehab costs</span>
     <span id="cfRehab" class="profit-neg" style="font-weight:600;">-$0</span>
-  </div>
-  <div id="cfMuggingStatus" style="font-size:0.82rem; padding:8px 0 4px 0; font-weight:600;"></div>
-
-  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding:8px 0 4px 0; border-top:1px solid var(--border); margin-top:6px;">
-    <span style="color:var(--text-dim);">Net faction gain (from synced history)</span>
-    <span id="cfFactionNet" style="font-weight:600;">$0</span>
-  </div>
-  <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-dim); padding-top:4px;">
-    <span>Deposited: <span id="cfFactionDeposits">$0</span></span>
-    <span>Returned: <span id="cfFactionWithdrawals">$0</span></span>
-  </div>
-
-  <div style="display:flex; justify-content:space-between; font-size:0.78rem; padding:8px 0 0 0; color:var(--text-dim);">
-    <span>Personal transfers sent (tracked, not counted as loss)</span>
-    <span id="cfTransfersOut">$0</span>
   </div>
 </div>
 
@@ -504,7 +486,8 @@ const IGNORE_PATTERNS = [
   'hospital','successful login','api key add','api key remove',
   'trade expire','trade cancel',
   'travel depart','travel arrive',
-  'gym train','item use','attack hospitalize receive','attack lost','attack leave','crime fail','crime success item gain','crime skill level up','stock buy','stock sell',
+  'gym train','item use','attack hospitalize receive','attack lost','attack leave','attack assist','attack failed receive','attack stalemate receive','crime fail','crime success item gain','crime skill level up','stock buy','stock sell',
+  'faction loan item send','revive preference','nerve maximum','life maximum',
   'racket','organized crime','chain','education','medical','mail','hunting',
   'items equip','items unequip','item equip','item unequip','job special',
   'merit assign','honor awarded','item market add','item market price edit','item market remove',
@@ -713,6 +696,10 @@ function ingestLogBatch(logObj, catalog){
       type = 'buy'; source = 'itemmarket'; counterparty = 'Item Market';
     } else if(title.includes('shop') || title.includes('store')){
       type = 'buy'; source = 'npc'; counterparty = 'NPC';
+    } else if(title === 'points market sell'){
+      type = 'sell'; source = 'points'; counterpartyId = d.buyer; counterparty = 'Player #' + d.buyer;
+    } else if(title === 'points market buy'){
+      type = 'buy'; source = 'points'; counterpartyId = d.seller; counterparty = 'Player #' + d.seller;
     } else if(title === 'item abroad buy'){
       // Held back rather than pushed immediately — travel fee cost gets folded
       // into these below, once we've seen every travel fee in this batch.
@@ -730,7 +717,9 @@ function ingestLogBatch(logObj, catalog){
       continue;
     }
 
-    const items = Array.isArray(d.items) ? d.items : [{id: d.item, qty: d.quantity || 1}];
+    const items = Array.isArray(d.items) ? d.items
+      : source === 'points' ? [{ id: null, name: 'Points', qty: d.quantity || 1 }]
+      : [{id: d.item, qty: d.quantity || 1}];
     let unitCost = Number(d.cost_each ?? d.cost ?? d.price ?? 0);
     let feeApplied = false;
 
@@ -748,7 +737,7 @@ function ingestLogBatch(logObj, catalog){
 
       ledger.push({
         syncId: uid, date, ts, type, source,
-        item: itemName(catalog, it.id),
+        item: it.name || itemName(catalog, it.id),
         qty: Number(it.qty) || 1,
         unitPrice: unitCost,
         counterparty,
@@ -1036,7 +1025,7 @@ function formatRowTime(row){
 }
 
 function sourceLabel(source){
-  const labels = { itemmarket: 'Item Mkt', bazaar: 'Bazaar', npc: 'NPC', abroad: 'Abroad', trade: 'Trade' };
+  const labels = { itemmarket: 'Item Mkt', bazaar: 'Bazaar', npc: 'NPC', abroad: 'Abroad', trade: 'Trade', points: 'Points Mkt' };
   return labels[source] || source;
 }
 
@@ -1163,51 +1152,26 @@ function renderCashFlow(){
 
   const jobIncome = cashEvents.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
   const muggingLoss = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
-  const recovery = cashEvents
-    .filter(e => e.category === 'mugging_others' || e.category === 'crime')
-    .reduce((s,e) => s + e.amount, 0);
-  const factionDeposits = cashEvents.filter(e => e.category === 'faction_deposit').reduce((s,e) => s + e.amount, 0);
-  const factionWithdrawals = cashEvents.filter(e => e.category === 'faction_withdrawal').reduce((s,e) => s + e.amount, 0);
   const rehabCost = cashEvents.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
-  const transfersOut = cashEvents.filter(e => e.category === 'transfer_out').reduce((s,e) => s + e.amount, 0);
 
   jobEl.textContent = '$' + jobIncome.toFixed(2);
   document.getElementById('cfMuggingLoss').textContent = '-$' + muggingLoss.toFixed(2);
-  document.getElementById('cfRecovery').textContent = '+$' + recovery.toFixed(2);
   const rehabEl = document.getElementById('cfRehab');
   if(rehabEl) rehabEl.textContent = '-$' + rehabCost.toFixed(2);
-  const transferEl = document.getElementById('cfTransfersOut');
-  if(transferEl) transferEl.textContent = '$' + transfersOut.toFixed(2);
+}
 
-  // Real net faction gain: what actually came back to you, minus what you put in.
-  // Depositing $1000 then getting $3000 back should read as +$2000 (with $1000 returned),
-  // not as if the whole $3000 were profit.
-  const factionEl = document.getElementById('cfFactionNet');
-  if(factionEl){
-    const netFaction = factionWithdrawals - factionDeposits;
-    const returned = Math.min(factionDeposits, factionWithdrawals);
-    if(netFaction > 0){
-      factionEl.innerHTML = `<span class="profit-pos">+$${netFaction.toFixed(2)}</span>` +
-        (returned > 0 ? ` <span class="tag" title="Part of what you got back was just your own deposit coming back to you">($${returned.toFixed(2)} returned)</span>` : '');
-    } else if(netFaction < 0){
-      factionEl.innerHTML = `<span style="color:var(--text-dim);">-$${Math.abs(netFaction).toFixed(2)}</span> <span class="tag" title="This usually means older withdrawals happened before the window that's been synced — not necessarily a real loss. Try 'Load older history' to pull further back.">not fully synced yet</span>`;
-    } else {
-      factionEl.innerHTML = `$0.00`;
-    }
+async function cfSyncClick(){
+  const btn = document.getElementById('cfSyncBtn');
+  const status = document.getElementById('cfSyncStatus');
+  btn.disabled = true;
+  status.textContent = 'Syncing…';
+  try{
+    await syncFromTorn();
+    status.textContent = 'Synced just now.';
+  }catch(e){
+    status.textContent = 'Sync failed: ' + e.message;
   }
-  const factionDepEl = document.getElementById('cfFactionDeposits');
-  if(factionDepEl) factionDepEl.textContent = '$' + factionDeposits.toFixed(2);
-  const factionWithEl = document.getElementById('cfFactionWithdrawals');
-  if(factionWithEl) factionWithEl.textContent = '$' + factionWithdrawals.toFixed(2);
-
-  const statusEl = document.getElementById('cfMuggingStatus');
-  const net = recovery - muggingLoss;
-  if(net >= 0){
-    statusEl.innerHTML = `✓ <span class="profit-pos">No mugged cash unrecovered</span>` +
-      (net > 0 ? ` <span class="tag" title="Recovery from mugging others and crimes exceeded what you lost to mugging">(+$${net.toFixed(2)} recovered surplus)</span>` : '');
-  } else {
-    statusEl.innerHTML = `⚠ <span class="profit-neg">$${Math.abs(net).toFixed(2)} still unrecovered from mugging</span>`;
-  }
+  btn.disabled = false;
 }
 
 function renderDayProfit(){
