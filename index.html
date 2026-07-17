@@ -255,8 +255,20 @@
       style="width:28px; height:28px; padding:0; border-radius:50%; font-size:1rem; line-height:1;">⟳</button>
   </div>
   <div id="cfSyncStatus" style="font-size:0.72rem; color:var(--text-dim); margin-bottom:6px;"></div>
+
+  <div class="row-buttons" style="margin-bottom:8px;">
+    <button class="small secondary" onclick="setCashFlowFilter('today')" style="flex:1;">Today</button>
+    <button class="small secondary" onclick="setCashFlowFilter('month')" style="flex:1;">This month</button>
+    <button class="small secondary" onclick="setCashFlowFilter('all')" style="flex:1;">Last 6 mo</button>
+  </div>
+  <div class="row-buttons" style="margin-bottom:10px;">
+    <input type="date" id="cfDateInput" onchange="setCashFlowFilter('date')" style="margin-bottom:0;">
+    <input type="month" id="cfMonthInput" onchange="setCashFlowFilter('monthpick')" style="margin-bottom:0;">
+  </div>
+  <div id="cfFilterLabel" style="font-size:0.72rem; color:var(--text-dim); margin-bottom:8px;">Showing: last 6 months</div>
+
   <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
-    <span style="color:var(--text-dim);">Job income (last 6 months)</span>
+    <span style="color:var(--text-dim);">Job income</span>
     <span id="cfJobIncome" style="font-weight:600;">$0</span>
   </div>
   <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
@@ -1146,18 +1158,61 @@ function setProfitDate(which){
   renderDayProfit();
 }
 
+let cashFlowFilter = { mode: 'all', value: null }; // mode: 'today' | 'month' | 'all' | 'date' | 'monthpick'
+
+function setCashFlowFilter(mode){
+  if(mode === 'date'){
+    cashFlowFilter = { mode: 'date', value: document.getElementById('cfDateInput').value };
+  } else if(mode === 'monthpick'){
+    cashFlowFilter = { mode: 'monthpick', value: document.getElementById('cfMonthInput').value };
+  } else {
+    cashFlowFilter = { mode, value: null };
+  }
+  renderCashFlow();
+}
+
+function cashEventMatchesFilter(e){
+  if(cashFlowFilter.mode === 'all') return true;
+  if(cashFlowFilter.mode === 'today'){
+    return e.date === new Date().toISOString().slice(0,10);
+  }
+  if(cashFlowFilter.mode === 'month'){
+    return e.date.slice(0,7) === new Date().toISOString().slice(0,7);
+  }
+  if(cashFlowFilter.mode === 'date'){
+    return cashFlowFilter.value && e.date === cashFlowFilter.value;
+  }
+  if(cashFlowFilter.mode === 'monthpick'){
+    return cashFlowFilter.value && e.date.slice(0,7) === cashFlowFilter.value;
+  }
+  return true;
+}
+
 function renderCashFlow(){
   const jobEl = document.getElementById('cfJobIncome');
   if(!jobEl) return; // page not loaded yet
 
-  const jobIncome = cashEvents.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
-  const muggingLoss = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
-  const rehabCost = cashEvents.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
+  const filtered = cashEvents.filter(cashEventMatchesFilter);
+  const jobIncome = filtered.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
+  const muggingLoss = filtered.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
+  const rehabCost = filtered.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
 
   jobEl.textContent = '$' + jobIncome.toFixed(2);
   document.getElementById('cfMuggingLoss').textContent = '-$' + muggingLoss.toFixed(2);
   const rehabEl = document.getElementById('cfRehab');
   if(rehabEl) rehabEl.textContent = '-$' + rehabCost.toFixed(2);
+
+  const labelEl = document.getElementById('cfFilterLabel');
+  if(labelEl){
+    const labels = {
+      today: 'Showing: today',
+      month: 'Showing: this month',
+      all: 'Showing: last 6 months',
+      date: `Showing: ${cashFlowFilter.value || '—'}`,
+      monthpick: `Showing: ${cashFlowFilter.value || '—'}`
+    };
+    labelEl.textContent = labels[cashFlowFilter.mode] || 'Showing: last 6 months';
+  }
 }
 
 async function cfSyncClick(){
@@ -1217,10 +1272,12 @@ function importLedger(event){
 }
 // --- Initialization: runs last, after every function/const above is defined ---
 const todayStr = new Date().toISOString().slice(0,10);
-['historyFromDate','profitDate','ledgerFilterInput'].forEach(id => {
+['historyFromDate','profitDate','ledgerFilterInput','cfDateInput'].forEach(id => {
   const el = document.getElementById(id);
   if(el) el.max = todayStr;
 });
+const cfMonthEl = document.getElementById('cfMonthInput');
+if(cfMonthEl) cfMonthEl.max = todayStr.slice(0,7);
 const ledgerFilterEl = document.getElementById('ledgerFilterInput');
 if(ledgerFilterEl) ledgerFilterEl.value = todayStr;
 
