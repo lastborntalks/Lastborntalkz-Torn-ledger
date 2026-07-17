@@ -206,10 +206,11 @@
 
 <div class="card">
   <label>Load older history</label>
-  <div class="row-buttons">
-    <input type="date" id="historyFromDate" style="margin-bottom:0;">
-    <button class="secondary" onclick="loadOlderHistory()" style="width:auto; margin-bottom:0; white-space:nowrap;">Load</button>
-  </div>
+  <label style="font-size:0.72rem;">From (earliest)</label>
+  <input type="date" id="historyFromDate" style="margin-bottom:8px;">
+  <label style="font-size:0.72rem;">To (most recent)</label>
+  <input type="date" id="historyToDate" style="margin-bottom:8px;">
+  <button class="secondary" onclick="loadOlderHistory()">Load</button>
   <div id="historyStatus" class="status"></div>
 </div>
 
@@ -477,6 +478,15 @@ function saveKey(){
   const key = document.getElementById('apiKey').value.trim();
   localStorage.setItem('tornApiKey', key);
   setStatus('Key saved.', true);
+  applySignupDateLimit(key);
+}
+
+async function applySignupDateLimit(apiKey){
+  if(!apiKey) return;
+  const signupDate = await getSignupDate(apiKey);
+  if(!signupDate) return; // best-effort — silently skip if unavailable
+  const fromEl = document.getElementById('historyFromDate');
+  if(fromEl) fromEl.min = signupDate;
 }
 
 function setStatus(msg, ok){
@@ -509,6 +519,22 @@ const IGNORE_PATTERNS = [
 
 function isNoise(title){
   return IGNORE_PATTERNS.some(p => title.includes(p));
+}
+
+async function getSignupDate(apiKey){
+  const cached = localStorage.getItem('tornSignupDate');
+  if(cached) return cached; // account creation date never changes, safe to cache forever
+
+  try{
+    const res = await fetch('https://api.torn.com/user/?selections=profile&key=' + encodeURIComponent(apiKey));
+    const data = await res.json();
+    if(data.error || !data.signup) return null;
+    const signupDate = new Date(data.signup).toISOString().slice(0,10);
+    localStorage.setItem('tornSignupDate', signupDate);
+    return signupDate;
+  }catch(e){
+    return null; // best-effort — if this field doesn't exist or fails, just skip the restriction
+  }
 }
 
 async function getItemCatalog(apiKey){
@@ -867,11 +893,11 @@ function ingestLogBatch(logObj, catalog){
   return { added, unmatched, oldestTs };
 }
 
-async function pullHistorySince(apiKey, catalog, targetTs, onProgress){
-  let toParam = null; // null = most recent 100
+async function pullHistorySince(apiKey, catalog, targetTs, onProgress, startToParam){
+  let toParam = startToParam || null; // null = start from most recent 100
   let totalAdded = 0;
   let round = 0;
-  const maxRounds = 60; // safety cap regardless of caller
+  const maxRounds = 200; // safety cap — enough to reach several years back for a veteran account
 
   while(round < maxRounds){
     round++;
@@ -914,6 +940,7 @@ async function syncFromTorn(){
   try{
     const catalog = await getItemCatalog(apiKey);
     fetchBalance(apiKey); // runs independently, doesn't block log parsing
+    applySignupDateLimit(apiKey); // runs independently, doesn't block log parsing
 
     setStatus('Syncing log…');
     const res = await fetch('https://api.torn.com/user/?selections=log&key=' + encodeURIComponent(apiKey));
@@ -956,19 +983,42 @@ async function syncFromTorn(){
 async function loadOlderHistory(){
   const apiKey = document.getElementById('apiKey').value.trim();
   const fromDateStr = document.getElementById('historyFromDate').value;
+  const toDateStr = document.getElementById('historyToDate').value;
   const statusEl = document.getElementById('historyStatus');
 
   if(!apiKey){ statusEl.textContent = 'Enter and save your API key first.'; statusEl.className = 'status err'; return; }
-  if(!fromDateStr){ statusEl.textContent = 'Pick a start date first.'; statusEl.className = 'status err'; return; }
+  if(!fromDateStr){ statusEl.textContent = 'Pick a start (earliest) date first.'; statusEl.className = 'status err'; return; }
 
   const targetTs = new Date(fromDateStr + 'T00:00:00Z').getTime();
+  const toTs = toDateStr ? new Date(toDateStr + 'T23:59:59Z').getTime() : Date.now();
+
+  if(targetTs > toTs){
+    statusEl.textContent = '"From" date must be earlier than "To" date.';
+    statusEl.className = 'status err';
+    return;
+  }
+
+  // Rough warning for large ranges, so a veteran account pulling years of history
+  // doesn't feel broken or stuck partway through — it's just genuinely a lot of data.
+  const daySpan = Math.round((toTs - targetTs) / (24*60*60*1000));
+  if(daySpan > 90){
+    const proceed = confirm(
+      `This range covers about ${daySpan} days. For an older or very active account, ` +
+      `this can take several minutes and a lot of batches, since Torn only allows 100 ` +
+      `log entries per request. It will keep working in the background — just don't close ` +
+      `the tab. Continue?`
+    );
+    if(!proceed){ statusEl.textContent = 'Cancelled.'; statusEl.className = 'status'; return; }
+  }
+
   const catalog = await getItemCatalog(apiKey);
+  const startToParam = toDateStr ? Math.floor(toTs / 1000) : null;
 
   try{
     const totalAdded = await pullHistorySince(apiKey, catalog, targetTs, (msg, isErr) => {
       statusEl.className = isErr ? 'status err' : 'status';
       statusEl.textContent = msg;
-    });
+    }, startToParam);
     saveLedger();
     statusEl.className = 'status ok';
     statusEl.textContent = `Done. ${totalAdded} new entries pulled.`;
@@ -1272,10 +1322,16 @@ function importLedger(event){
 }
 // --- Initialization: runs last, after every function/const above is defined ---
 const todayStr = new Date().toISOString().slice(0,10);
-['historyFromDate','profitDate','ledgerFilterInput','cfDateInput'].forEach(id => {
+['historyFromDate','profitDate','ledgerFilterInput','cfDateInput','historyToDate'].forEach(id => {
   const el = document.getElementById(id);
   if(el) el.max = todayStr;
 });
+const historyToEl = document.getElementById('historyToDate');
+if(historyToEl && !historyToEl.value) historyToEl.value = todayStr;
+
+// If a key is already saved from before, apply the signup-date restriction now too
+const savedKeyForSignup = localStorage.getItem('tornApiKey');
+if(savedKeyForSignup) applySignupDateLimit(savedKeyForSignup);
 const cfMonthEl = document.getElementById('cfMonthInput');
 if(cfMonthEl) cfMonthEl.max = todayStr.slice(0,7);
 const ledgerFilterEl = document.getElementById('ledgerFilterInput');
