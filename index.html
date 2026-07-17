@@ -249,7 +249,11 @@
 </div>
 
 <div class="card">
-  <label style="margin-bottom:10px;">Cash Flow (beyond item trading)</label>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <label style="margin-bottom:0;">Cash Flow (beyond item trading)</label>
+    <button class="small secondary" onclick="syncFromTorn()" title="Sync now"
+      style="width:28px; height:28px; padding:0; border-radius:50%; font-size:1rem; line-height:1;">⟳</button>
+  </div>
   <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
     <span style="color:var(--text-dim);">Job income</span>
     <span id="cfJobIncome" style="font-weight:600;">$0</span>
