@@ -267,16 +267,19 @@
     <span id="cfRehab" class="profit-neg" style="font-weight:600;">-$0</span>
   </div>
   <div id="cfMuggingStatus" style="font-size:0.82rem; padding:8px 0 4px 0; font-weight:600;"></div>
-  <div style="display:flex; justify-content:space-between; font-size:0.78rem; padding:8px 0 0 0; color:var(--text-dim);">
-    <span>Faction deposits (tracked, not counted as profit)</span>
-    <span id="cfFactionDeposits">$0</span>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding:8px 0 4px 0; border-top:1px solid var(--border); margin-top:6px;">
+    <span style="color:var(--text-dim);">Net faction gain</span>
+    <span id="cfFactionNet" style="font-weight:600;">$0</span>
   </div>
-  <div style="display:flex; justify-content:space-between; font-size:0.78rem; padding:4px 0 0 0; color:var(--text-dim);">
+  <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-dim); padding-top:4px;">
+    <span>Deposited: <span id="cfFactionDeposits">$0</span></span>
+    <span>Returned: <span id="cfFactionWithdrawals">$0</span></span>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; font-size:0.78rem; padding:8px 0 0 0; color:var(--text-dim);">
     <span>Personal transfers sent (tracked, not counted as loss)</span>
     <span id="cfTransfersOut">$0</span>
-  </div>
-  <div style="font-size:0.72rem; color:var(--text-dim); margin-top:4px;">
-    Faction withdrawal tracking isn't wired up yet — needs a real example once you withdraw, so it can show the actual net gain instead of just the deposit total.
   </div>
 </div>
 
@@ -624,9 +627,10 @@ function ingestLogBatch(logObj, catalog){
     if(title === 'faction give money receive'){
       const uid = 'cash-' + id;
       if(!cashEvents.some(e => e.syncId === uid)){
-        // Money another faction member sends you directly — a real gain, and per the
-        // request, this should count toward "recovery" that can offset mugging losses.
-        cashEvents.push({ syncId: uid, date, ts, category: 'gift', kind: 'gain', amount: Number(d.money_given) || 0, counterpartyId: d.sender || null });
+        // Money coming FROM the faction bank to you — whether an officer sent it
+        // manually or it's an OC/war payout, the source is the faction, not a peer.
+        // Tracked against deposits below to get the real net faction gain.
+        cashEvents.push({ syncId: uid, date, ts, category: 'faction_withdrawal', kind: 'gain', amount: Number(d.money_given) || 0, counterpartyId: d.sender || null });
       }
       continue;
     }
@@ -1156,26 +1160,47 @@ function renderCashFlow(){
   const jobIncome = cashEvents.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
   const muggingLoss = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
   const recovery = cashEvents
-    .filter(e => e.category === 'mugging_others' || e.category === 'crime' || e.category === 'gift')
+    .filter(e => e.category === 'mugging_others' || e.category === 'crime')
     .reduce((s,e) => s + e.amount, 0);
   const factionDeposits = cashEvents.filter(e => e.category === 'faction_deposit').reduce((s,e) => s + e.amount, 0);
+  const factionWithdrawals = cashEvents.filter(e => e.category === 'faction_withdrawal').reduce((s,e) => s + e.amount, 0);
   const rehabCost = cashEvents.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
   const transfersOut = cashEvents.filter(e => e.category === 'transfer_out').reduce((s,e) => s + e.amount, 0);
 
   jobEl.textContent = '$' + jobIncome.toFixed(2);
   document.getElementById('cfMuggingLoss').textContent = '-$' + muggingLoss.toFixed(2);
   document.getElementById('cfRecovery').textContent = '+$' + recovery.toFixed(2);
-  document.getElementById('cfFactionDeposits').textContent = '$' + factionDeposits.toFixed(2);
   const rehabEl = document.getElementById('cfRehab');
   if(rehabEl) rehabEl.textContent = '-$' + rehabCost.toFixed(2);
   const transferEl = document.getElementById('cfTransfersOut');
   if(transferEl) transferEl.textContent = '$' + transfersOut.toFixed(2);
 
+  // Real net faction gain: what actually came back to you, minus what you put in.
+  // Depositing $1000 then getting $3000 back should read as +$2000 (with $1000 returned),
+  // not as if the whole $3000 were profit.
+  const factionEl = document.getElementById('cfFactionNet');
+  if(factionEl){
+    const netFaction = factionWithdrawals - factionDeposits;
+    const returned = Math.min(factionDeposits, factionWithdrawals);
+    if(netFaction > 0){
+      factionEl.innerHTML = `<span class="profit-pos">+$${netFaction.toFixed(2)}</span>` +
+        (returned > 0 ? ` <span class="tag" title="Part of what you got back was just your own deposit coming back to you">($${returned.toFixed(2)} returned)</span>` : '');
+    } else if(netFaction < 0){
+      factionEl.innerHTML = `<span class="profit-neg">-$${Math.abs(netFaction).toFixed(2)}</span> <span class="tag">still in faction (deposited, not yet returned)</span>`;
+    } else {
+      factionEl.innerHTML = `$0.00`;
+    }
+  }
+  const factionDepEl = document.getElementById('cfFactionDeposits');
+  if(factionDepEl) factionDepEl.textContent = '$' + factionDeposits.toFixed(2);
+  const factionWithEl = document.getElementById('cfFactionWithdrawals');
+  if(factionWithEl) factionWithEl.textContent = '$' + factionWithdrawals.toFixed(2);
+
   const statusEl = document.getElementById('cfMuggingStatus');
   const net = recovery - muggingLoss;
   if(net >= 0){
     statusEl.innerHTML = `✓ <span class="profit-pos">No mugged cash unrecovered</span>` +
-      (net > 0 ? ` <span class="tag" title="Recovery from mugging others, crimes, and gifts exceeded what you lost to mugging">(+$${net.toFixed(2)} recovered surplus)</span>` : '');
+      (net > 0 ? ` <span class="tag" title="Recovery from mugging others and crimes exceeded what you lost to mugging">(+$${net.toFixed(2)} recovered surplus)</span>` : '');
   } else {
     statusEl.innerHTML = `⚠ <span class="profit-neg">$${Math.abs(net).toFixed(2)} still unrecovered from mugging</span>`;
   }
