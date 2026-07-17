@@ -317,6 +317,7 @@
     <strong style="color:var(--blue); font-size:0.85rem;">LEDGER</strong>
     <div class="row-buttons" style="width:auto; gap:6px;">
       <button class="small secondary" onclick="exportLedger()">Export</button>
+      <button class="small secondary" onclick="wipeAndResync()" style="color:var(--red);">Wipe &amp; Resync</button>
       <button class="small secondary" onclick="document.getElementById('importFile').click()">Import</button>
       <input type="file" id="importFile" style="display:none" onchange="importLedger(event)">
     </div>
@@ -493,6 +494,16 @@ function setStatus(msg, ok){
   const el = document.getElementById('syncStatus');
   el.textContent = msg;
   el.className = 'status ' + (ok === true ? 'ok' : ok === false ? 'err' : '');
+}
+
+function wipeAndResync(){
+  if(!confirm('This erases your local ledger, cash events, and dedup memory, then re-pulls everything fresh from Torn. Continue?')) return;
+  ledger = [];
+  cashEvents = [];
+  ['tornLedger','tornCashEvents','tornBackfillDone','tornItemCatalogV2','tornItemCatalogV2At','tornNameCache']
+    .forEach(k => localStorage.removeItem(k));
+  saveLedger();
+  syncFromTorn();
 }
 
 function saveLedger(){
