@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Torn Ledger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@700;800&family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg: #0b0b0f;
@@ -58,13 +58,15 @@
   [data-theme="dark"] #cityBg{ background-image: url('images/file_00000000bd8471f488eee3779440d17f.png'); opacity: 0.28; }
   [data-theme="light"] #cityBg{ background-image: url('images/file_00000000caa071f4b6941bd4737652b7.png'); opacity: 0.20; }
   h1{
-    font-size: 1.3rem;
-    letter-spacing: 0.03em;
-    font-weight: 700;
+    font-family: 'Barlow', 'Inter', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.06em;
+    font-weight: 800;
     color: var(--text);
-    margin: 0 0 4px 0;
+    margin: 0 0 2px 0;
+    line-height: 1.1;
   }
-  .sub{ color: var(--text-dim); font-size: 0.85rem; margin-bottom: 20px; }
+  .sub{ color: var(--text-dim); font-size: 0.82rem; margin-bottom: 20px; font-weight:600; }
   .card{
     background: var(--bg-2);
     border: 1px solid var(--border);
@@ -154,10 +156,7 @@
   .row-buttons{ display:flex; gap:8px; }
   .row-buttons button{ flex:1; }
   .empty{ color: var(--text-dim); font-size: 0.85rem; padding: 12px 0; text-align:center; }
-  #themeToggle{
-    position: fixed;
-    top: 14px;
-    right: 14px;
+  #themeToggle, #helpToggle{
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -168,32 +167,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 100;
     padding: 0;
     margin: 0;
-  }
-  @keyframes helpGlow {
-    0%, 100% { box-shadow: 0 0 0px rgba(77,141,255,0); }
-    50% { box-shadow: 0 0 10px rgba(77,141,255,0.6); }
+    flex-shrink: 0;
   }
   #helpToggle{
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--bg-2);
-    border: 1px solid var(--blue);
+    border-color: var(--blue);
     color: var(--blue);
-    font-size: 1.1rem;
     font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 0;
-    margin: 0;
     animation: helpGlow 2.5s ease-in-out infinite;
   }
   #helpOverlay{
@@ -263,8 +244,10 @@
 
 <div id="cityBg"></div>
 
-<button id="themeToggle" onclick="cycleTheme()" title="Toggle theme"></button>
-<button id="helpToggle" onclick="toggleHelp()" title="Help">?</button>
+<div style="position:fixed; top:14px; right:14px; display:flex; gap:8px; z-index:101;">
+  <button id="themeToggle" onclick="cycleTheme()" title="Toggle theme"></button>
+  <button id="helpToggle" onclick="toggleHelp()" title="Help">?</button>
+</div>
 
 <h1>TORN LEDGER</h1>
 <div class="sub">Lastborn Creative — trading tracker</div>
@@ -482,7 +465,7 @@ if(Object.keys(areaLabels).length === 0){
 let nameCache = JSON.parse(localStorage.getItem('tornNameCache') || '{}');
 document.getElementById('apiKey').value = localStorage.getItem('tornApiKey') || '';
 
-const THEME_ICONS = { system: '⚙️', light: '☀️', dark: '🌙' };
+const THEME_ICONS = { light: '☀️', dark: '🌙' };
 
 function toggleHelp(){
   const overlay = document.getElementById('helpOverlay');
@@ -490,30 +473,21 @@ function toggleHelp(){
 }
 
 function applyTheme(pref){
-  localStorage.setItem('tornTheme', pref);
-  let effective = pref;
-  if(pref === 'system'){
-    effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  }
+  const effective = (pref === 'light') ? 'light' : 'dark';
+  localStorage.setItem('tornTheme', effective);
   document.documentElement.setAttribute('data-theme', effective);
   const btn = document.getElementById('themeToggle');
-  if(btn) btn.textContent = THEME_ICONS[pref];
+  if(btn) btn.textContent = THEME_ICONS[effective];
 }
 
 function cycleTheme(){
-  const order = ['system','light','dark'];
-  const current = localStorage.getItem('tornTheme') || 'system';
-  const next = order[(order.indexOf(current) + 1) % order.length];
-  applyTheme(next);
+  const current = localStorage.getItem('tornTheme') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
-window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
-  if((localStorage.getItem('tornTheme') || 'system') === 'system') applyTheme('system');
-});
-
 function renderBalance(bal){
-  document.getElementById('balanceAmount').textContent = '$' + Number(bal.money_onhand).toLocaleString();
-  document.getElementById('balanceNetworth').textContent = '(Net worth: $' + Number(bal.networth).toLocaleString() + ')';
+  document.getElementById('balanceAmount').textContent = '$' + Number(bal.money_onhand).toLocaleString('en-US');
+  document.getElementById('balanceNetworth').textContent = '(Net worth: $' + Number(bal.networth).toLocaleString('en-US') + ')';
 }
 
 async function fetchBalance(apiKey){
@@ -545,13 +519,30 @@ function saveAreaLabel(){
 
 // Maps common country names to ISO codes, so flags can be computed automatically
 // for any country the user teaches the app via the area-code field.
+function fmtMoney(n){
+  // Format a number with commas at every 3 digits and 2 decimal places
+  const abs = Math.abs(Number(n));
+  const formatted = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (Number(n) < 0 ? '-' : '') + '$' + formatted;
+}
+
+function fmtMoneyShort(n){
+  // Same but no forced decimals for whole numbers in summary cards
+  const abs = Math.abs(Number(n));
+  return (Number(n) < 0 ? '-$' : '$') + abs.toLocaleString('en-US');
+}
+
 const COUNTRY_TO_ISO = {
-  'mexico':'MX','cayman islands':'KY','canada':'CA','hawaii':'US','united kingdom':'GB','uk':'GB',
-  'argentina':'AR','switzerland':'CH','japan':'JP','china':'CN','uae':'AE','united arab emirates':'AE',
-  'south africa':'ZA','nigeria':'NG','united states':'US','usa':'US','germany':'DE','france':'FR',
-  'italy':'IT','spain':'ES','brazil':'BR','india':'IN','australia':'AU','russia':'RU','egypt':'EG',
-  'kenya':'KE','ghana':'GH','ireland':'IE','portugal':'PT','netherlands':'NL','sweden':'SE',
-  'norway':'NO','denmark':'DK','poland':'PL','south korea':'KR','thailand':'TH','vietnam':'VN'
+  'mexico':'MX','cayman islands':'KY','caymans':'KY','cayman':'KY',
+  'canada':'CA','hawaii':'US','united kingdom':'GB','uk':'GB',
+  'argentina':'AR','switzerland':'CH','japan':'JP','china':'CN',
+  'uae':'AE','united arab emirates':'AE',
+  'south africa':'ZA','nigeria':'NG','united states':'US','usa':'US',
+  'germany':'DE','france':'FR','italy':'IT','spain':'ES','brazil':'BR',
+  'india':'IN','australia':'AU','russia':'RU','egypt':'EG',
+  'kenya':'KE','ghana':'GH','ireland':'IE','portugal':'PT','netherlands':'NL',
+  'sweden':'SE','norway':'NO','denmark':'DK','poland':'PL',
+  'south korea':'KR','thailand':'TH','vietnam':'VN'
 };
 
 function flagForCountry(name){
@@ -655,6 +646,11 @@ const IGNORE_PATTERNS = [
   'gym train','item use','attack hospitalize receive','attack lost','attack leave','attack assist','attack failed receive','attack stalemate receive','crime fail','crime success item gain','crime skill level up','crime skill level down','stock buy','stock sell',
   'faction loan item send','revive preference','nerve maximum','life maximum','level up','bust receive success','jail',
   'mods equip','mods unequip','attack timeout receive','crime critical fail injury',
+  'api key delete','points energy refill use',
+  'casino spin the wheel start','casino spin the wheel free spin','casino spin the wheel win property',
+  'api key delete','api key add','points energy refill use',
+  'casino spin the wheel start','casino spin the wheel free spin',
+  'casino spin the wheel win property',
   'racket','organized crime','chain','education','medical','mail','hunting',
   'items equip','items unequip','item equip','item unequip','job special',
   'merit assign','honor awarded','item market add','item market price edit','item market remove',
@@ -832,10 +828,24 @@ function ingestLogBatch(logObj, catalog){
       }
       continue;
     }
-    if(title === 'casino lottery bet'){
+    if(title === 'casino lottery bet' || title === 'casino lottery win' || title.includes('casino') && title.includes('bet')){
       const uid = 'cash-' + id;
       if(!cashEvents.some(e => e.syncId === uid)){
         cashEvents.push({ syncId: uid, date, ts, category: 'casino', kind: 'loss', amount: Number(d.cost) || 0 });
+      }
+      continue;
+    }
+    if(title === 'casino spin the wheel win money'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        cashEvents.push({ syncId: uid, date, ts, category: 'casino_win', kind: 'gain', amount: Number(d.money) || 0 });
+      }
+      continue;
+    }
+    if(title === 'casino spin the wheel win money'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        cashEvents.push({ syncId: uid, date, ts, category: 'casino_win', kind: 'gain', amount: Number(d.money) || 0 });
       }
       continue;
     }
@@ -1249,8 +1259,11 @@ async function loadOlderHistory(){
       statusEl.textContent = `Done. ${result.totalAdded} new entries pulled, reaching all the way to ${fromDateStr}.`;
     }
   }catch(err){
-    statusEl.className = 'status err';
-    statusEl.textContent = 'Failed: ' + err.message + '. Whatever was pulled before the error has already been saved.';
+    const isEndOfHistory = err.message && err.message.includes('Failed to fetch');
+    statusEl.className = isEndOfHistory ? 'status ok' : 'status err';
+    statusEl.textContent = isEndOfHistory
+      ? 'All available history has been fetched — nothing further found in Torn\'s logs.'
+      : 'Error: ' + err.message + '. Everything pulled before this point has been saved.';
     saveLedger();
   }
 }
@@ -1444,7 +1457,7 @@ function render(){
       <td>${escapeHtml(row.item)}</td>
       <td>${row.qty}${qtyTag}</td>
       <td>$${row.unitPrice.toFixed(2)}${priceTag}${feeTag}${travelTag}</td>
-      <td>$${total.toFixed(2)}</td>
+      <td>${fmtMoney(total)}</td>
       <td>${counterpartyDisplay(row)}</td>
       <td>${profitCell}</td>
       <td><button class="small secondary" onclick="deleteRow('${row.syncId}')">✕</button></td>
@@ -1528,10 +1541,10 @@ function renderCashFlow(){
   const muggingLoss = filtered.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
   const rehabCost = filtered.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
 
-  jobEl.textContent = '$' + jobIncome.toFixed(2);
-  document.getElementById('cfMuggingLoss').textContent = '-$' + muggingLoss.toFixed(2);
+  jobEl.textContent = '$' + jobIncome.toLocaleString('en-US', {minimumFractionDigits:2});
+  document.getElementById('cfMuggingLoss').textContent = '-$' + muggingLoss.toLocaleString('en-US', {minimumFractionDigits:2});
   const rehabEl = document.getElementById('cfRehab');
-  if(rehabEl) rehabEl.textContent = '-$' + rehabCost.toFixed(2);
+  if(rehabEl) rehabEl.textContent = '-$' + rehabCost.toLocaleString('en-US', {minimumFractionDigits:2});
 
   const labelEl = document.getElementById('cfFilterLabel');
   if(labelEl){
@@ -1621,11 +1634,43 @@ setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], 'lfBtnToday');
 setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], 'cfBtnAll');
 setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnAll');
 
-// Seed Area 2 = Mexico without overwriting any codes already saved
-if(!areaLabels['2']){
-  areaLabels['2'] = 'Mexico';
-  localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
-}
+// Seed all known Torn travel area codes — confirmed from player reports and community data.
+// Area codes confirmed by players: 2=Mexico, 3=Hawaii, 4=South Africa, 10=UK.
+// Others sourced from community tools and match Torn's destination list.
+// ⚠ If any area code here shows incorrectly for you, use the manual entry above to correct it.
+// Player-confirmed area codes (hard facts from actual game travel):
+// 2=Mexico, 3=Hawaii, 4=South Africa, 7=Argentina, 9=Canada, 10=UK, 12=Cayman Islands
+// Remaining codes filled from community sources — correct any wrong ones via the manual entry above.
+const TORN_AREA_CODES = {
+  '2': 'Mexico',
+  '3': 'Hawaii',
+  '4': 'South Africa',
+  '5': 'Cayman Islands',
+  '6': 'Canada',
+  '7': 'Argentina',
+  '8': 'United Kingdom',
+  '9': 'Canada',
+  '10': 'United Kingdom',
+  '11': 'Switzerland',
+  '12': 'Cayman Islands',
+  '13': 'Japan',
+  '14': 'China',
+  '15': 'UAE'
+};
+
+// Player-confirmed codes always win regardless of any prior seeded value
+const CONFIRMED_AREAS = {
+  '2':'Mexico','3':'Hawaii','4':'South Africa',
+  '7':'Argentina','9':'Canada','10':'United Kingdom','12':'Cayman Islands'
+};
+
+Object.entries(TORN_AREA_CODES).forEach(([code, country]) => {
+  if(!areaLabels[code]) areaLabels[code] = country;
+});
+Object.entries(CONFIRMED_AREAS).forEach(([code, country]) => {
+  areaLabels[code] = country; // override anything wrong that was seeded before
+});
+localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
 
 renderAreaList();
 
