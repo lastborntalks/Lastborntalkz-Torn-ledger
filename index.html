@@ -102,6 +102,11 @@
     border: 1px solid var(--blue-dim);
     color: var(--blue);
   }
+  .qf-btn.qf-active{
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+  }
   button.small{
     width: auto;
     padding: 6px 10px;
@@ -167,13 +172,99 @@
     padding: 0;
     margin: 0;
   }
+  @keyframes helpGlow {
+    0%, 100% { box-shadow: 0 0 0px rgba(77,141,255,0); }
+    50% { box-shadow: 0 0 10px rgba(77,141,255,0.6); }
+  }
+  #helpToggle{
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg-2);
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 0;
+    margin: 0;
+    animation: helpGlow 2.5s ease-in-out infinite;
+  }
+  #helpOverlay{
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    padding: 16px;
+    overflow-y: auto;
+  }
+  #helpOverlay.open{ display: block; }
+  #helpPanel{
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    max-width: 500px;
+    margin: 30px auto;
+    color: var(--text);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  #helpPanel h3{ color: var(--blue); font-size: 0.95rem; margin: 16px 0 6px 0; }
+  #helpPanel h3:first-child{ margin-top: 0; }
+  #helpPanel p{ margin: 0 0 8px 0; color: var(--text-dim); }
+  #helpPanel .warn{ color: var(--red); font-weight: 600; }
 </style>
+<div id="helpOverlay">
+  <div id="helpPanel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <strong style="color:var(--blue); font-size:1.05rem;">How to use Torn Ledger</strong>
+      <button class="small secondary" onclick="toggleHelp()">Close</button>
+    </div>
+
+    <h3>Getting started</h3>
+    <p>Paste your Torn API key above and tap Save Key. Don't have the right kind of key? Tap "Create the right key for me on Torn" — it opens Torn's own page with the correct permissions already selected. You never need a full-access key.</p>
+
+    <h3>Syncing</h3>
+    <p>Tap "Sync Now" to pull your recent activity. The very first time you use a key, it automatically pulls your last 6 months in the background too — this can take a few minutes for an active account, so don't close the tab.</p>
+
+    <h3>Loading your full history</h3>
+    <p>Use "Load everything since account creation" to pull your entire trading history from day one. For very active accounts this can take a while — you'll see a warning before it starts, and it'll tell you honestly if it stops early so you can continue from where it left off.</p>
+
+    <h3>Reading the ledger</h3>
+    <p>Each row shows a real buy or sell. "no buy record" means the item was likely obtained another way (like a crime reward), not necessarily a mistake. Small tags like "-5% fee" or "+travel" show when a cost has been adjusted for Item Market fees or flight costs.</p>
+
+    <h3>Unmatched logs</h3>
+    <p>Anything the system doesn't recognize yet shows up under "Unmatched log entries" near the bottom. Please share these so the ledger can be taught what they mean.</p>
+
+    <h3>All time views</h3>
+    <p>Switching to "All time" can take a moment to load if you have a lot of history — that's normal processing, not a fault. Switching back to it again afterward should be instant.</p>
+
+    <h3><span class="warn">Wipe & Resync</span></h3>
+    <p class="warn">This permanently erases your local ledger and re-pulls everything fresh from Torn. Only use this if something looks broken and a normal sync hasn't fixed it.</p>
+
+    <h3>Foreign area codes</h3>
+    <p>The system can't know which country an area number means until you tell it once — enter the area number and country name after your first trip there, and it'll remember automatically after that.</p>
+
+    <h3>Privacy</h3>
+    <p>Everything — your key, your ledger, your history — is stored only in your own browser. Nobody else, including the creator, can see your data.</p>
+  </div>
+</div>
+
 </head>
 <body>
 
 <div id="cityBg"></div>
 
-<button id="themeToggle" onclick="cycleTheme()" title="Appearance"></button>
+<button id="themeToggle" onclick="cycleTheme()" title="Toggle theme"></button>
+<button id="helpToggle" onclick="toggleHelp()" title="Help">?</button>
 
 <h1>TORN LEDGER</h1>
 <div class="sub">Lastborn Creative — trading tracker</div>
@@ -187,8 +278,8 @@
 </style>
 <a href="https://paystack.shop/pay/q28-1oqwqp" target="_blank" style="text-decoration:none;">
   <div class="card" id="donateCard" style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; margin-bottom:16px;">
-    <span style="font-size:0.85rem; color:var(--text); font-weight:600;">☕ Is this saving you time?</span>
-    <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Chip in →</span>
+    <span style="font-size:0.85rem; color:var(--text); font-weight:600;">☕ Buy me a coffee</span>
+    <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Support →</span>
   </div>
 </a>
 
@@ -246,9 +337,9 @@
 <div class="card">
   <label>Check profit for a specific day</label>
   <div class="row-buttons">
-    <button class="small secondary" onclick="setProfitDate('today')" style="flex:1;">Today</button>
-    <button class="small secondary" onclick="setProfitDate('yesterday')" style="flex:1;">Yesterday</button>
-    <button class="small secondary" onclick="setProfitDate('all')" style="flex:1;">All time</button>
+    <button class="small secondary qf-btn" id="pdBtnToday" onclick="setProfitDate('today')" style="flex:1;">Today</button>
+    <button class="small secondary qf-btn" id="pdBtnYesterday" onclick="setProfitDate('yesterday')" style="flex:1;">Yesterday</button>
+    <button class="small secondary qf-btn" id="pdBtnAll" onclick="setProfitDate('all')" style="flex:1;">All time</button>
   </div>
   <input type="date" id="profitDate" onchange="renderDayProfit()">
   <div id="dayProfitBox" class="total-box" style="padding:6px 0 0 0;">
@@ -266,9 +357,9 @@
   <div id="cfSyncStatus" style="font-size:0.72rem; color:var(--text-dim); margin-bottom:6px;"></div>
 
   <div class="row-buttons" style="margin-bottom:8px;">
-    <button class="small secondary" onclick="setCashFlowFilter('today')" style="flex:1;">Today</button>
-    <button class="small secondary" onclick="setCashFlowFilter('month')" style="flex:1;">This month</button>
-    <button class="small secondary" onclick="setCashFlowFilter('all')" style="flex:1;">All time</button>
+    <button class="small secondary qf-btn" id="cfBtnToday" onclick="setCashFlowFilter('today')" style="flex:1;">Today</button>
+    <button class="small secondary qf-btn" id="cfBtnMonth" onclick="setCashFlowFilter('month')" style="flex:1;">This month</button>
+    <button class="small secondary qf-btn" id="cfBtnAll" onclick="setCashFlowFilter('all')" style="flex:1;">All time</button>
   </div>
   <div class="row-buttons" style="margin-bottom:10px;">
     <input type="date" id="cfDateInput" onchange="setCashFlowFilter('date')" style="margin-bottom:0;">
@@ -331,9 +422,9 @@
     </div>
   </div>
   <div class="row-buttons" style="margin-bottom:8px;">
-    <button class="small secondary" onclick="setLedgerFilter('all')" style="flex:1;">All time</button>
-    <button class="small secondary" onclick="setLedgerFilter('today')" style="flex:1;">Today</button>
-    <button class="small secondary" onclick="setLedgerFilter('yesterday')" style="flex:1;">Yesterday</button>
+    <button class="small secondary qf-btn" id="lfBtnAll" onclick="setLedgerFilter('all')" style="flex:1;">All time</button>
+    <button class="small secondary qf-btn" id="lfBtnToday" onclick="setLedgerFilter('today')" style="flex:1;">Today</button>
+    <button class="small secondary qf-btn" id="lfBtnYesterday" onclick="setLedgerFilter('yesterday')" style="flex:1;">Yesterday</button>
   </div>
   <input type="date" id="ledgerFilterInput" onchange="setLedgerFilter('pick')" style="margin-bottom:10px;">
   <div class="scroll-x">
@@ -391,7 +482,12 @@ if(Object.keys(areaLabels).length === 0){
 let nameCache = JSON.parse(localStorage.getItem('tornNameCache') || '{}');
 document.getElementById('apiKey').value = localStorage.getItem('tornApiKey') || '';
 
-const THEME_ICONS = { system: '⚙', light: '☀', dark: '☾' };
+const THEME_ICONS = { system: '⚙️', light: '☀️', dark: '🌙' };
+
+function toggleHelp(){
+  const overlay = document.getElementById('helpOverlay');
+  if(overlay) overlay.classList.toggle('open');
+}
 
 function applyTheme(pref){
   localStorage.setItem('tornTheme', pref);
@@ -514,7 +610,36 @@ function wipeAndResync(){
   syncFromTorn();
 }
 
+let ledgerVersion = 0;
+
+// Silently resolves any trader names still showing as bare IDs,
+// triggered on page load so names appear without needing an explicit sync.
+async function backgroundResolveNames(){
+  const apiKey = localStorage.getItem('tornApiKey');
+  if(!apiKey) return;
+  const idsNeeded = [...new Set(
+    ledger.filter(r => r.counterpartyId).map(r => r.counterpartyId)
+  )].filter(id => !nameCache[id] && !unresolvableIds[id]);
+  if(idsNeeded.length === 0) return;
+
+  const batch = idsNeeded.slice(0, 60); // resolve up to 60 in the background on load
+  for(const id of batch){
+    try{
+      const res = await fetch(`https://api.torn.com/user/${id}?selections=basic&key=${encodeURIComponent(apiKey)}`);
+      const d = await res.json();
+      if(d.name){ nameCache[id] = d.name; }
+      else { unresolvableIds[id] = true; }
+    }catch(e){ unresolvableIds[id] = true; }
+    await new Promise(r => setTimeout(r, 350));
+  }
+  localStorage.setItem('tornNameCache', JSON.stringify(nameCache));
+  localStorage.setItem('tornUnresolvableIds', JSON.stringify(unresolvableIds));
+  ledgerVersion++; // invalidate the render cache so updated names actually show
+  render();
+}
+
 function saveLedger(){
+  ledgerVersion++;
   localStorage.setItem('tornLedger', JSON.stringify(ledger));
   saveCashEvents();
   render();
@@ -527,7 +652,7 @@ const IGNORE_PATTERNS = [
   'hospital','successful login','api key add','api key remove',
   'trade expire','trade cancel',
   'travel depart','travel arrive',
-  'gym train','item use','attack hospitalize receive','attack lost','attack leave','attack assist','attack failed receive','attack stalemate receive','crime fail','crime success item gain','crime skill level up','stock buy','stock sell',
+  'gym train','item use','attack hospitalize receive','attack lost','attack leave','attack assist','attack failed receive','attack stalemate receive','crime fail','crime success item gain','crime skill level up','crime skill level down','stock buy','stock sell',
   'faction loan item send','revive preference','nerve maximum','life maximum','level up','bust receive success','jail',
   'mods equip','mods unequip','attack timeout receive','crime critical fail injury',
   'racket','organized crime','chain','education','medical','mail','hunting',
@@ -591,7 +716,7 @@ async function resolveNames(apiKey){
     ledger.filter(r => r.counterpartyId).map(r => r.counterpartyId)
   )].filter(id => !nameCache[id] && !unresolvableIds[id]);
 
-  const cap = idsNeeded.slice(0, 25); // stay well under Torn's 100/min limit per sync
+  const cap = idsNeeded.slice(0, 60); // 60 per sync stays within Torn's 100/min rate limit with comfortable headroom
   for(const id of cap){
     try{
       const res = await fetch(`https://api.torn.com/user/${id}?selections=basic&key=${encodeURIComponent(apiKey)}`);
@@ -1209,19 +1334,40 @@ function computeSellProfit(row){
 }
 
 let ledgerFilterDate = new Date().toISOString().slice(0,10); // defaults to today, to save scroll space
+let ledgerRenderCache = { version: -1, html: '' }; // caches the 'All time' table so switching back is instant
+
+function setActiveQuickButton(ids, activeId){
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('qf-active', id === activeId);
+  });
+}
+
+function confirmAllTime(){
+  return confirm(
+    "Showing everything you've synced can take a moment to load if you have a lot of " +
+    "history — it's not stuck, just processing. Continue?"
+  );
+}
 
 function setLedgerFilter(which){
   const input = document.getElementById('ledgerFilterInput');
   const today = new Date();
-  if(which === 'today'){
+
+  if(which === 'all'){
+    if(ledgerFilterDate !== null && !confirmAllTime()) return;
+    ledgerFilterDate = null;
+    setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], 'lfBtnAll');
+  } else if(which === 'today'){
     ledgerFilterDate = today.toISOString().slice(0,10);
+    setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], 'lfBtnToday');
   } else if(which === 'yesterday'){
     const y = new Date(today); y.setDate(y.getDate() - 1);
     ledgerFilterDate = y.toISOString().slice(0,10);
-  } else if(which === 'all'){
-    ledgerFilterDate = null;
+    setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], 'lfBtnYesterday');
   } else {
     ledgerFilterDate = input.value || null;
+    setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], null);
   }
   input.value = ledgerFilterDate || '';
   render();
@@ -1230,23 +1376,42 @@ function setLedgerFilter(which){
 function render(){
   const body = document.getElementById('ledgerBody');
   const empty = document.getElementById('emptyMsg');
-  body.innerHTML = '';
-
-  const visible = ledgerFilterDate ? ledger.filter(r => r.date === ledgerFilterDate) : ledger;
 
   if(ledger.length === 0){
+    body.innerHTML = '';
     empty.style.display = 'block';
     empty.textContent = 'No entries yet. Sync or add manually above.';
     document.getElementById('totalProfit').textContent = '$0';
     renderDayProfit();
     return;
   }
+
+  // Total profit/loss always reflects ALL-TIME data, regardless of the table filter below
+  let totalProfit = 0;
+  ledger.filter(r => r.type === 'sell').forEach(row => { totalProfit += computeSellProfit(row).profit; });
+  document.getElementById('totalProfit').textContent =
+    (totalProfit >= 0 ? '+$' : '-$') + Math.abs(totalProfit).toFixed(2);
+  document.getElementById('totalProfit').style.color = totalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // The "All time" view over a large ledger is the expensive one to build — reuse it
+  // if nothing's changed since last time, so switching back to it feels instant.
+  if(ledgerFilterDate === null && ledgerRenderCache.version === ledgerVersion){
+    body.innerHTML = ledgerRenderCache.html;
+    empty.style.display = ledger.length === 0 ? 'block' : 'none';
+    renderDayProfit();
+    return;
+  }
+
+  const visible = ledgerFilterDate ? ledger.filter(r => r.date === ledgerFilterDate) : ledger;
+
   if(visible.length === 0){
+    body.innerHTML = '';
     empty.style.display = 'block';
     empty.textContent = `No transactions on ${ledgerFilterDate}.`;
-  } else {
-    empty.style.display = 'none';
+    renderDayProfit();
+    return;
   }
+  empty.style.display = 'none';
 
   const sorted = [...visible].sort((a,b) => {
     const tA = a.ts || Date.parse(a.date) || 0;
@@ -1254,9 +1419,7 @@ function render(){
     return tB - tA; // newest first
   });
 
-  // Total profit/loss always reflects ALL-TIME data, regardless of the table filter above
-  let totalProfit = 0;
-  ledger.filter(r => r.type === 'sell').forEach(row => { totalProfit += computeSellProfit(row).profit; });
+  const rowsHtml = []; // build as an array and join once — string += in a loop is O(n²) and genuinely slow at scale
 
   for(const row of sorted){
     const total = row.qty * row.unitPrice;
@@ -1272,7 +1435,7 @@ function render(){
     const travelTag = row.travelFeeApplied ? ` <span class="tag" title="This item's cost includes a share of the flight cost for that trip">+travel</span>` : '';
     const times = formatRowTime(row);
 
-    body.innerHTML += `<tr>
+    rowsHtml.push(`<tr>
       <td>${row.date}</td>
       <td>${times.tct}</td>
       <td>${times.local}</td>
@@ -1285,12 +1448,15 @@ function render(){
       <td>${counterpartyDisplay(row)}</td>
       <td>${profitCell}</td>
       <td><button class="small secondary" onclick="deleteRow('${row.syncId}')">✕</button></td>
-    </tr>`;
+    </tr>`);
   }
 
-  document.getElementById('totalProfit').textContent =
-    (totalProfit >= 0 ? '+$' : '-$') + Math.abs(totalProfit).toFixed(2);
-  document.getElementById('totalProfit').style.color = totalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+  const finalHtml = rowsHtml.join('');
+  body.innerHTML = finalHtml;
+
+  if(ledgerFilterDate === null){
+    ledgerRenderCache = { version: ledgerVersion, html: finalHtml };
+  }
 
   renderDayProfit();
 }
@@ -1298,13 +1464,20 @@ function render(){
 function setProfitDate(which){
   const input = document.getElementById('profitDate');
   const today = new Date();
-  if(which === 'today'){
+  if(which === 'all'){
+    if(!confirmAllTime()) return;
+    input.value = '';
+    setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnAll');
+  } else if(which === 'today'){
     input.value = today.toISOString().slice(0,10);
+    setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnToday');
   } else if(which === 'yesterday'){
     const y = new Date(today); y.setDate(y.getDate() - 1);
     input.value = y.toISOString().slice(0,10);
+    setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnYesterday');
   } else {
     input.value = '';
+    setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], null);
   }
   renderDayProfit();
 }
@@ -1312,12 +1485,19 @@ function setProfitDate(which){
 let cashFlowFilter = { mode: 'all', value: null }; // mode: 'today' | 'month' | 'all' | 'date' | 'monthpick'
 
 function setCashFlowFilter(mode){
+  if(mode === 'all' && cashFlowFilter.mode !== 'all'){
+    if(!confirmAllTime()) return;
+  }
   if(mode === 'date'){
     cashFlowFilter = { mode: 'date', value: document.getElementById('cfDateInput').value };
+    setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], null);
   } else if(mode === 'monthpick'){
     cashFlowFilter = { mode: 'monthpick', value: document.getElementById('cfMonthInput').value };
+    setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], null);
   } else {
     cashFlowFilter = { mode, value: null };
+    const idMap = { today: 'cfBtnToday', month: 'cfBtnMonth', all: 'cfBtnAll' };
+    setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], idMap[mode] || null);
   }
   renderCashFlow();
 }
@@ -1437,6 +1617,9 @@ const cfMonthEl = document.getElementById('cfMonthInput');
 if(cfMonthEl) cfMonthEl.max = todayStr.slice(0,7);
 const ledgerFilterEl = document.getElementById('ledgerFilterInput');
 if(ledgerFilterEl) ledgerFilterEl.value = todayStr;
+setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], 'lfBtnToday');
+setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], 'cfBtnAll');
+setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnAll');
 
 // Seed Area 2 = Mexico without overwriting any codes already saved
 if(!areaLabels['2']){
@@ -1454,6 +1637,9 @@ if(cachedBalance) renderBalance(cachedBalance);
 
 render();
 renderCashFlow();
+// Silently fill in any trader names still missing from previous syncs,
+// so names appear on page load without needing a manual sync every time.
+setTimeout(() => backgroundResolveNames(), 2000);
 </script>
 <script data-goatcounter="https://tornledger.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
