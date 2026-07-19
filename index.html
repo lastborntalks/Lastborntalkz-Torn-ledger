@@ -147,16 +147,19 @@
     padding: 16px;
   }
   .total-box .amount{
-    font-size: 1.8rem;
+    font-size: clamp(1.1rem, 5vw, 1.8rem);
     font-family: 'Roboto Mono', monospace;
     font-weight: 700;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
   }
   .total-box .label{ color: var(--text-dim); font-size: 0.8rem; font-weight:600; }
   details summary{ cursor: pointer; color: var(--text-dim); font-size: 0.8rem; }
   .row-buttons{ display:flex; gap:8px; }
   .row-buttons button{ flex:1; }
   .empty{ color: var(--text-dim); font-size: 0.85rem; padding: 12px 0; text-align:center; }
-  #themeToggle, #helpToggle{
+  #helpToggle{
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -211,31 +214,34 @@
     </div>
 
     <h3>Getting started</h3>
-    <p>Paste your Torn API key above and tap Save Key. Don't have the right kind of key? Tap "Create the right key for me on Torn" — it opens Torn's own page with the correct permissions already selected. You never need a full-access key.</p>
+    <p>Paste your Torn API key in the Ledger tab and tap Save Key. No full-access key needed — tap "Create the right key for me on Torn" and it opens Torn's own key page with only the required permissions already selected.</p>
 
-    <h3>Syncing</h3>
-    <p>Tap "Sync Now" to pull your recent activity. The very first time you use a key, it automatically pulls your last 6 months in the background too — this can take a few minutes for an active account, so don't close the tab.</p>
+    <h3>Navigating the app</h3>
+    <p>Use the tabs at the top or the icons at the bottom to switch between pages. Ledger shows your transaction history. Financial Health shows your complete money picture across trading, mugging, jobs, rehab, travel, and casino. Settings has appearance options and data tools.</p>
 
-    <h3>Loading your full history</h3>
-    <p>Use "Load everything since account creation" to pull your entire trading history from day one. For very active accounts this can take a while — you'll see a warning before it starts, and it'll tell you honestly if it stops early so you can continue from where it left off.</p>
+    <h3>Syncing your data</h3>
+    <p>Tap "Sync Now" in the Ledger tab to pull recent activity. The very first time you use a key, it automatically pulls the last 6 months in the background. This can take several minutes for active accounts — do not close the tab while it runs.</p>
+
+    <h3>Loading full history</h3>
+    <p>Tap "Load everything since account creation" for your complete history from day one. For veteran accounts this takes time — you'll see a warning first, and if it stops early it will tell you exactly where it stopped so you can continue from that point.</p>
 
     <h3>Reading the ledger</h3>
-    <p>Each row shows a real buy or sell. "no buy record" means the item was likely obtained another way (like a crime reward), not necessarily a mistake. Small tags like "-5% fee" or "+travel" show when a cost has been adjusted for Item Market fees or flight costs.</p>
+    <p>Each row is a real transaction. Tags in the Unit Price column tell you when adjustments were made: "-5% fee" means the Item Market seller fee was deducted, "+travel" means the flight cost was folded into that item's cost basis. "no buy record" usually means the item came from a crime or was already in your inventory before you started using the ledger.</p>
+
+    <h3>Financial Health page</h3>
+    <p>This page answers "Am I actually making money?" by combining trading profit with all other tracked income and expenses. Smart insights at the bottom are generated automatically from your real numbers, not hardcoded guesses.</p>
 
     <h3>Unmatched logs</h3>
-    <p>Anything the system doesn't recognize yet shows up under "Unmatched log entries" near the bottom. Please share these so the ledger can be taught what they mean.</p>
+    <p>After syncing, scroll to the bottom of the Ledger page and expand "Unmatched log entries." If anything is listed, copy it and send it to Lastborntalkz [4283156] in-game. That is how the system gets taught to handle new log types and improves accuracy for everyone.</p>
 
-    <h3>All time views</h3>
-    <p>Switching to "All time" can take a moment to load if you have a lot of history — that's normal processing, not a fault. Switching back to it again afterward should be instant.</p>
+    <h3>All time view</h3>
+    <p>Switching to "All time" in any section can take a moment with a large history. It will ask you to confirm first. Switching back to it a second time is instant — it uses a cached version.</p>
 
-    <h3><span class="warn">Wipe & Resync</span></h3>
-    <p class="warn">This permanently erases your local ledger and re-pulls everything fresh from Torn. Only use this if something looks broken and a normal sync hasn't fixed it.</p>
-
-    <h3>Foreign area codes</h3>
-    <p>The system can't know which country an area number means until you tell it once — enter the area number and country name after your first trip there, and it'll remember automatically after that.</p>
+    <h3><span class="warn">⚠ Wipe and Full Resync</span></h3>
+    <p class="warn">Found in Settings. This permanently deletes your local ledger and re-pulls everything fresh. Only use it if something looks badly wrong and a normal sync hasn't fixed it.</p>
 
     <h3>Privacy</h3>
-    <p>Everything — your key, your ledger, your history — is stored only in your own browser. Nobody else, including the creator, can see your data.</p>
+    <p>All data — your API key, your ledger, your history — is stored only in your own browser. Nothing is sent to any server. The creator has no access to your data.</p>
   </div>
 </div>
 
@@ -244,8 +250,7 @@
 
 <div id="cityBg"></div>
 
-<div style="position:fixed; top:14px; right:14px; display:flex; gap:8px; z-index:101;">
-  <button id="themeToggle" onclick="cycleTheme()" title="Toggle theme"></button>
+<div style="position:fixed; top:14px; right:14px; z-index:101;">
   <button id="helpToggle" onclick="toggleHelp()" title="Help">?</button>
 </div>
 
@@ -335,12 +340,15 @@
   }
   #donateCard{ animation: donateGlow 3s ease-in-out infinite; }
 </style>
-<a href="https://paystack.shop/pay/q28-1oqwqp" target="_blank" style="text-decoration:none;">
-  <div class="card" id="donateCard" style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; margin-bottom:16px;">
+<div class="card" id="donateCard" style="padding:12px 14px; margin-bottom:16px;">
+  <a href="https://paystack.shop/pay/q28-1oqwqp" target="_blank" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
     <span style="font-size:0.85rem; color:var(--text); font-weight:600;">☕ Buy me a coffee</span>
     <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Support →</span>
+  </a>
+  <div style="border-top:1px solid var(--border); padding-top:8px; font-size:0.78rem; color:var(--text-dim);">
+    Or send Xanax in-game to <strong style="color:var(--blue);">Lastborntalkz [4283156]</strong> — every bit keeps this free.
   </div>
-</a>
+</div>
 
 <div class="card">
   <label for="apiKey">Torn API Key</label>
@@ -374,7 +382,8 @@
 
 <style>
   .stats-row{ display:flex; gap:12px; }
-  .stats-row .card{ flex:1; margin-bottom:0; }
+  .stats-row .card{ flex:1; margin-bottom:0; min-width:0; overflow:hidden; }
+  .stats-row .amount{ font-size:1.2rem; word-break:break-all; }
   .total-box{ text-align:left; }
   .total-box .amount{ font-size: 1.5rem; }
   .balance-amount{ font-size: 1.3rem; font-family: 'Roboto Mono', monospace; font-weight:700; color: var(--text); }
@@ -434,9 +443,13 @@
     <span style="color:var(--text-dim);">Mugging losses</span>
     <span id="cfMuggingLoss" class="profit-neg" style="font-weight:600;">-$0</span>
   </div>
-  <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;">
+  <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
     <span style="color:var(--text-dim);">Rehab costs</span>
     <span id="cfRehab" class="profit-neg" style="font-weight:600;">-$0</span>
+  </div>
+  <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;">
+    <span style="color:var(--text-dim);">Property upkeep</span>
+    <span id="cfProperty" class="profit-neg" style="font-weight:600;">-$0</span>
   </div>
 </div>
 
@@ -462,15 +475,6 @@
   <button onclick="addManualRow()">Add to Ledger</button>
 </div>
 
-<div class="card">
-  <label>Foreign area codes — teach it once</label>
-  <div class="row-buttons">
-    <input type="number" id="areaCode" placeholder="Area # (e.g. 4)" style="margin-bottom:0;">
-    <input type="text" id="areaName" placeholder="Country (e.g. South Africa)" style="margin-bottom:0;">
-  </div>
-  <button class="secondary" onclick="saveAreaLabel()" style="margin-top:8px;">Save Country Name</button>
-  <div id="areaListBox" style="font-size:0.7rem; color:var(--text-dim); margin-top:6px;"></div>
-</div>
 
 <div class="card">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -518,7 +522,7 @@
 
   <div class="card">
     <div class="label">AM I ACTUALLY MAKING MONEY?</div>
-    <div id="fhNetAmount" style="font-size:1.6rem; font-family:'Roboto Mono',monospace; font-weight:700; margin:4px 0;">—</div>
+    <div id="fhNetAmount" style="font-size:clamp(1.1rem,5vw,1.6rem); font-family:'Roboto Mono',monospace; font-weight:700; margin:4px 0; word-break:break-all;">—</div>
     <div style="font-size:0.75rem; color:var(--text-dim);">Trading profit minus all tracked expenses</div>
   </div>
 
@@ -542,6 +546,10 @@
     <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
       <span style="color:var(--text-dim);">Travel spending (flights)</span>
       <span id="fhTravelTotal" style="font-weight:600;">$0</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
+      <span style="color:var(--text-dim);">Property upkeep</span>
+      <span id="fhPropertyTotal" style="font-weight:600;">$0</span>
     </div>
     <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
       <span style="color:var(--text-dim);">Casino spending</span>
@@ -589,17 +597,6 @@
   </div>
 
   <div class="card">
-    <div class="label" style="margin-bottom:6px;">FOREIGN AREA CODES</div>
-    <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:8px;">All known Torn destinations are pre-loaded. Add or correct any that show wrong.</div>
-    <div class="row-buttons">
-      <input type="number" id="areaCode" placeholder="Area # (e.g. 4)" style="margin-bottom:0;">
-      <input type="text" id="areaName" placeholder="Country (e.g. South Africa)" style="margin-bottom:0;">
-    </div>
-    <button class="secondary" onclick="saveAreaLabel()" style="margin-top:8px;">Save Country Name</button>
-    <div id="areaListBox" style="font-size:0.7rem; color:var(--text-dim); margin-top:6px;"></div>
-  </div>
-
-  <div class="card">
     <div class="label" style="margin-bottom:8px;">DATA TOOLS</div>
     <button class="secondary" onclick="exportLedger()" style="margin-bottom:8px;">Export ledger backup</button>
     <button class="secondary" onclick="document.getElementById('importFileSt').click()" style="margin-bottom:8px;">Import ledger backup</button>
@@ -609,10 +606,11 @@
 
   <div class="card">
     <div class="label" style="margin-bottom:6px;">ABOUT</div>
-    <div style="font-size:0.8rem; color:var(--text-dim); line-height:1.6;">
-      Torn Ledger — built by Lastborntalkz.<br>
-      All data stays in your own browser — nothing is sent anywhere.<br>
-      No full-access key required.
+    <div style="font-size:0.8rem; color:var(--text-dim); line-height:1.7;">
+      <strong style="color:var(--text);">Torn Ledger</strong> is a free financial tracking tool for Torn City, built by <strong style="color:var(--blue);">Lastborntalkz [4283156]</strong>.<br><br>
+      It pulls data from your own Torn API key and calculates real profit and loss across every type of transaction — bazaar sales, item market sales, player trades, foreign purchases, and more. All data is stored only in your own browser and is never sent to any server.<br><br>
+      No full-access key is required. The site generates the exact custom key it needs when you tap "Create the right key for me on Torn."<br><br>
+      If you find a bug, encounter an unmatched log entry, or have a suggestion, reach out to Lastborntalkz [4283156] in-game.
     </div>
   </div>
 </div>
@@ -620,7 +618,7 @@
 <!-- ═══ BOTTOM NAV ═══ -->
 <nav id="bottomNav">
   <button class="bnav-btn active" id="bnav-ledger" onclick="switchTab('ledger')">📊<span>Ledger</span></button>
-  <button class="bnav-btn" id="bnav-health" onclick="switchTab('health')">💰<span>Health</span></button>
+  <button class="bnav-btn" id="bnav-health" onclick="switchTab('health')">📈<span>Health</span></button>
   <button class="bnav-btn" id="bnav-settings" onclick="switchTab('settings')">⚙️<span>Settings</span></button>
 </nav>
 
@@ -683,8 +681,6 @@ function applyTheme(pref){
   const effective = (pref === 'light') ? 'light' : 'dark';
   localStorage.setItem('tornTheme', effective);
   document.documentElement.setAttribute('data-theme', effective);
-  const btn = document.getElementById('themeToggle');
-  if(btn) btn.textContent = THEME_ICONS[effective];
   const dark = document.getElementById('settingsDark');
   const light = document.getElementById('settingsLight');
   if(dark) dark.classList.toggle('qf-active', effective === 'dark');
@@ -763,6 +759,8 @@ function flagForCountry(name){
   return iso.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
 }
 function renderAreaList(){
+  const el = document.getElementById('areaListBox');
+  if(!el) return; // element removed — area codes are now fully pre-seeded
   const entries = Object.entries(areaLabels);
   document.getElementById('areaListBox').innerHTML = entries.length
     ? 'Known: ' + entries.map(([c,n]) => `Area ${c} = ${flagForCountry(n)} ${n}`).join(' · ')
@@ -825,7 +823,7 @@ async function backgroundResolveNames(){
   )].filter(id => !nameCache[id] && !unresolvableIds[id]);
   if(idsNeeded.length === 0) return;
 
-  const batch = idsNeeded.slice(0, 60); // resolve up to 60 in the background on load
+  const batch = idsNeeded.slice(0, 100); // resolve up to 100 in the background on load
   for(const id of batch){
     try{
       const res = await fetch(`https://api.torn.com/user/${id}?selections=basic&key=${encodeURIComponent(apiKey)}`);
@@ -923,7 +921,7 @@ async function resolveNames(apiKey){
     ledger.filter(r => r.counterpartyId).map(r => r.counterpartyId)
   )].filter(id => !nameCache[id] && !unresolvableIds[id]);
 
-  const cap = idsNeeded.slice(0, 60); // 60 per sync stays within Torn's 100/min rate limit with comfortable headroom
+  const cap = idsNeeded.slice(0, 80); // 80 per sync stays well within Torn's 100/min rate limit
   for(const id of cap){
     try{
       const res = await fetch(`https://api.torn.com/user/${id}?selections=basic&key=${encodeURIComponent(apiKey)}`);
@@ -1053,6 +1051,13 @@ function ingestLogBatch(logObj, catalog){
       }
       continue;
     }
+    if(title === 'property upkeep'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        cashEvents.push({ syncId: uid, date, ts, category: 'property', kind: 'loss', amount: Number(d.upkeep_paid) || 0 });
+      }
+      continue;
+    }
     if(title === 'money receive'){
       const uid = 'cash-' + id;
       if(!cashEvents.some(e => e.syncId === uid)){
@@ -1082,7 +1087,13 @@ function ingestLogBatch(logObj, catalog){
     }
 
     if(title === 'travel fee'){
-      travelFees.push({ ts, cost: Number(d.cost) || 0 });
+      const cost = Number(d.cost) || 0;
+      travelFees.push({ ts, cost });
+      // Also store as a cashEvent so Financial Health can total them
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        cashEvents.push({ syncId: uid, date, ts, category: 'travel_fee', kind: 'loss', amount: cost });
+      }
       continue;
     }
 
@@ -1772,21 +1783,20 @@ function switchTab(tab){
 function renderFinancialHealth(){
   const tradingProfit = ledger.filter(r => r.type === 'sell').reduce((s,r) => s + computeSellProfit(r).profit, 0);
   const rehabCost = cashEvents.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
+  const propertyCost = cashEvents.filter(e => e.category === 'property').reduce((s,e) => s + e.amount, 0);
   const casinoCost = cashEvents.filter(e => e.category === 'casino').reduce((s,e) => s + e.amount, 0);
   const casinoWin = cashEvents.filter(e => e.category === 'casino_win').reduce((s,e) => s + e.amount, 0);
   const muggingLoss = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
   const jobIncome = cashEvents.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
   const missionIncome = cashEvents.filter(e => e.category === 'mission').reduce((s,e) => s + e.amount, 0);
 
-  // Travel cost = the extra per-item fee we added to abroad buys, summed back out
-  const travelCost = ledger.filter(r => r.source === 'abroad' && r.travelFeeApplied)
-    .reduce((s,r) => {
-      // We can't recover the exact fee share without re-running the trip grouping,
-      // so we track faction deposits separately as a proxy for travel spend
-      return s; // placeholder — will improve when a "travel fee" cashEvent is stored separately
-    }, cashEvents.filter(e => e.category === 'travel_fee').reduce((s,e) => s + e.amount, 0));
+  // Travel cost: we stored adjusted unit prices on abroad BUY rows that had travelFeeApplied.
+  // The travel fee share for each item = (adjustedUnitPrice - baseItemPrice) * qty.
+  // Since we don't store the base price separately, we use the 'travel_fee' cashEvents
+  // that were explicitly captured during ingest as the authoritative source.
+  const travelCost = cashEvents.filter(e => e.category === 'travel_fee').reduce((s,e) => s + e.amount, 0);
 
-  const totalExpenses = rehabCost + casinoCost + travelCost + muggingLoss;
+  const totalExpenses = rehabCost + casinoCost + travelCost + propertyCost + muggingLoss;
   const netPosition = tradingProfit + jobIncome + missionIncome + casinoWin - totalExpenses;
 
   const set = (id, val, sign = false) => {
@@ -1804,6 +1814,7 @@ function renderFinancialHealth(){
   set('fhTradingProfit', tradingProfit);
   set('fhMuggingLoss', muggingLoss);
   set('fhRehabTotal', rehabCost);
+  set('fhPropertyTotal', propertyCost);
   set('fhTravelTotal', travelCost);
   set('fhCasinoTotal', casinoCost);
   set('fhTotalExpenses', totalExpenses);
@@ -1819,6 +1830,7 @@ function renderFinancialHealth(){
     const casinoPct = tradingProfit > 0 ? (casinoCost / tradingProfit * 100) : 0;
 
     if(rehabPct > 5) insights.push(`Rehab has cost you ${rehabPct.toFixed(1)}% of your total trading profit.`);
+    if(propertyCost > 0) insights.push(`You've paid ${fmtMoney(propertyCost)} in property upkeep. This is a fixed recurring cost that reduces your net position regardless of trading performance.`);
     if(muggingPct > 10) insights.push(`You've lost ${muggingPct.toFixed(1)}% of your trading profit to mugging — consider this your biggest uncontrolled expense.`);
     if(casinoPct > 5) insights.push(`Casino spending has consumed ${casinoPct.toFixed(1)}% of your trading profit.`);
     if(casinoWin > casinoCost) insights.push(`You're actually net positive from the casino (+${fmtMoney(casinoWin - casinoCost)}). Rare.`);
@@ -1832,7 +1844,7 @@ function renderFinancialHealth(){
   }
 
   const insightsEl = document.getElementById('fhInsights');
-  if(insightsEl) insightsEl.innerHTML = insights.map(i => `<div style="padding:4px 0; border-bottom:1px solid var(--border);">• ${i}</div>`).join('');
+  if(insightsEl) insightsEl.innerHTML = insights.map((i, idx) => `<div style="padding:6px 0; border-bottom:1px solid var(--border); display:flex; gap:8px;"><span style="color:var(--blue); font-weight:700; min-width:18px;">${idx+1}.</span><span>${i}</span></div>`).join('');
 }
 
 function renderCashFlow(){
@@ -1848,6 +1860,9 @@ function renderCashFlow(){
   document.getElementById('cfMuggingLoss').textContent = '-$' + muggingLoss.toLocaleString('en-US', {minimumFractionDigits:2});
   const rehabEl = document.getElementById('cfRehab');
   if(rehabEl) rehabEl.textContent = '-$' + rehabCost.toLocaleString('en-US', {minimumFractionDigits:2});
+  const propertyEl = document.getElementById('cfProperty');
+  const propertyCostCF = filtered.filter(e => e.category === 'property').reduce((s,e) => s + e.amount, 0);
+  if(propertyEl) propertyEl.textContent = '-$' + propertyCostCF.toLocaleString('en-US', {minimumFractionDigits:2});
 
   const labelEl = document.getElementById('cfFilterLabel');
   if(labelEl){
