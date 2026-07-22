@@ -155,8 +155,8 @@
     line-height: 1.2;
   }
   .total-box .label{ color: var(--text-dim); font-size: 0.8rem; font-weight:600; }
-  .compact-main{ display:block; }
-  .compact-full{ display:block; font-size:0.62rem; color: var(--text-dim); font-weight:400; margin-top:2px; letter-spacing:0; }
+  .compact-main{ display:block; font-size:clamp(1.5rem, 7.5vw, 2.3rem); line-height:1.15; }
+  .compact-full{ display:block; font-size:0.85rem; color: var(--text-dim); font-weight:400; margin-top:4px; letter-spacing:0; }
   details summary{ cursor: pointer; color: var(--text-dim); font-size: 0.8rem; }
   .row-buttons{ display:flex; gap:8px; }
   .row-buttons button{ flex:1; }
@@ -260,10 +260,10 @@
 #resyncNotif{
   position:fixed; top:60px; left:12px; right:12px; z-index:200;
   background:var(--blue); color:#fff;
-  border-radius:8px; padding:14px 16px;
-  font-size:1rem; line-height:1.4; font-family:'Inter',sans-serif; font-weight:600;
-  max-width:340px; box-shadow:0 4px 16px rgba(0,0,0,0.3);
-  animation: slideInNotif 10s ease forwards;
+  border-radius:8px; padding:8px 12px;
+  font-size:0.72rem; line-height:1.35; font-family:'Inter',sans-serif; font-weight:600;
+  max-width:220px; box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  animation: slideInNotif 5s ease forwards;
   pointer-events:none;
 }
 </style>
