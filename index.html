@@ -260,14 +260,14 @@
 #resyncNotif{
   position:fixed; top:60px; left:12px; right:12px; z-index:200;
   background:var(--blue); color:#fff;
-  border-radius:8px; padding:8px 12px;
+  border-radius:8px; padding:9px 13px;
   font-size:0.72rem; line-height:1.35; font-family:'Inter',sans-serif; font-weight:600;
-  max-width:220px; box-shadow:0 4px 16px rgba(0,0,0,0.3);
-  animation: slideInNotif 5s ease forwards;
+  max-width:250px; box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  animation: slideInNotif 7s ease forwards;
   pointer-events:none;
 }
 </style>
-<div id="resyncNotif">📣 New: Property upkeep is now tracked.<br>Go to Settings → Wipe &amp; Full Resync to include past payments.</div>
+<div id="resyncNotif">📣 App updates shipping fast this week. Wipe &amp; Full Resync (Settings) at least twice a day through this week to stay current.</div>
 
 <div id="cityBg"></div>
 
@@ -578,6 +578,10 @@
     <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
       <span style="color:var(--text-dim);">Casino spending</span>
       <span id="fhCasinoTotal" style="font-weight:600;">$0</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
+      <span style="color:var(--text-dim);">Gym memberships</span>
+      <span id="fhGymTotal" style="font-weight:600;">$0</span>
     </div>
     <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;">
       <span style="color:var(--text-dim); font-weight:700;">Total expenses</span>
@@ -912,11 +916,11 @@ function saveLedger(){
 
 // Titles that are known noise — never transactions, skip silently, never show as unmatched
 const IGNORE_PATTERNS = [
-  'bazaar add','bazaar favorite','bazaar remove',
+  'bazaar add','bazaar favorite','bazaar remove','bazaar open / close',
   'hospital','successful login','api key add','api key remove','api key delete',
   'trade expire','trade cancel',
   'travel depart','travel arrive',
-  'gym train','item use','attack hospitalize receive','attack lost','attack leave','attack assist',
+  'gym train','gym activate','item use','attack hospitalize receive','attack lost','attack leave','attack assist',
   'attack failed receive','attack stalemate receive','attack timeout receive',
   'crime fail','crime success item gain','crime skill level up','crime skill level down','crime critical fail injury','crime critical fail','crime use items',
   'stock buy','stock sell','stock special',
@@ -1099,6 +1103,15 @@ function ingestLogBatch(logObj, catalog){
       const uid = 'cash-' + id;
       if(!cashEvents.some(e => e.syncId === uid)){
         cashEvents.push({ syncId: uid, date, ts, category: 'rehab', kind: 'loss', amount: Number(d.cost) || 0 });
+      }
+      continue;
+    }
+    if(title === 'gym purchase'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        // Buying gym access is a real cash expense, distinct from noise like
+        // "gym activate"/"gym train" which involve no money at all.
+        cashEvents.push({ syncId: uid, date, ts, category: 'gym', kind: 'loss', amount: Number(d.cost) || 0 });
       }
       continue;
     }
@@ -1866,6 +1879,7 @@ function renderFinancialHealth(){
   const rehabCost = cashEvents.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
   const propertyCost = cashEvents.filter(e => e.category === 'property').reduce((s,e) => s + e.amount, 0);
   const casinoCost = cashEvents.filter(e => e.category === 'casino').reduce((s,e) => s + e.amount, 0);
+  const gymCost = cashEvents.filter(e => e.category === 'gym').reduce((s,e) => s + e.amount, 0);
   const casinoWin = cashEvents.filter(e => e.category === 'casino_win').reduce((s,e) => s + e.amount, 0);
   const muggingLoss = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
   const jobIncome = cashEvents.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
@@ -1877,7 +1891,7 @@ function renderFinancialHealth(){
   // that were explicitly captured during ingest as the authoritative source.
   const travelCost = cashEvents.filter(e => e.category === 'travel_fee').reduce((s,e) => s + e.amount, 0);
 
-  const totalExpenses = rehabCost + casinoCost + travelCost + propertyCost + muggingLoss;
+  const totalExpenses = rehabCost + casinoCost + travelCost + propertyCost + muggingLoss + gymCost;
   const netPosition = tradingProfit + jobIncome + missionIncome + casinoWin - totalExpenses;
 
   const set = (id, val, sign = false) => {
@@ -1900,6 +1914,7 @@ function renderFinancialHealth(){
   set('fhPropertyTotal', propertyCost);
   set('fhTravelTotal', travelCost);
   set('fhCasinoTotal', casinoCost);
+  set('fhGymTotal', gymCost);
   set('fhTotalExpenses', totalExpenses);
   set('fhJobIncome', jobIncome);
   set('fhMissionIncome', missionIncome);
@@ -1916,6 +1931,7 @@ function renderFinancialHealth(){
     if(propertyCost > 0) insights.push(`You've paid ${fmtMoney(propertyCost)} in property upkeep. This is a fixed recurring cost that reduces your net position regardless of trading performance.`);
     if(muggingPct > 10) insights.push(`You've lost ${muggingPct.toFixed(1)}% of your trading profit to mugging. That's your biggest uncontrolled expense.`);
     if(casinoPct > 5) insights.push(`Casino spending has consumed ${casinoPct.toFixed(1)}% of your trading profit.`);
+    if(gymCost > 0) insights.push(`You've spent ${fmtMoney(gymCost)} on gym memberships.`);
     if(casinoWin > casinoCost) insights.push(`You're actually net positive from the casino (+${fmtMoney(casinoWin - casinoCost)}). Rare.`);
     if(casinoWin < casinoCost) insights.push(`You've spent ${fmtMoney(casinoCost - casinoWin)} more at the casino than you've won back.`);
     if(rehabCost === 0 && muggingLoss === 0) insights.push('No rehab or mugging losses recorded yet. Your synced history may not cover enough history for this to be meaningful.');
