@@ -216,16 +216,16 @@
     </div>
 
     <h3>Getting started</h3>
-    <p>Paste your Torn API key in the Ledger tab and tap Save Key. No full-access key needed — tap "Create the right key for me on Torn" and it opens Torn's own key page with only the required permissions already selected.</p>
+    <p>Paste your Torn API key in the Ledger tab and tap Save Key. No full access key needed. Tap "Create the right key for me on Torn" and it opens Torn's own key page with only the required permissions already selected.</p>
 
     <h3>Navigating the app</h3>
     <p>Use the tabs at the top or the icons at the bottom to switch between pages. Ledger shows your transaction history. Financial Health shows your complete money picture across trading, mugging, jobs, rehab, travel, and casino. Settings has appearance options and data tools.</p>
 
     <h3>Syncing your data</h3>
-    <p>Tap "Sync Now" in the Ledger tab to pull recent activity. The very first time you use a key, it automatically pulls the last 6 months in the background. This can take several minutes for active accounts — do not close the tab while it runs.</p>
+    <p>Tap "Sync Now" in the Ledger tab to pull recent activity. The very first time you use a key, it automatically pulls the last 6 months in the background. This can take several minutes for active accounts. Do not close the tab while it runs.</p>
 
     <h3>Loading full history</h3>
-    <p>Tap "Load everything since account creation" for your complete history from day one. For veteran accounts this takes time — you'll see a warning first, and if it stops early it will tell you exactly where it stopped so you can continue from that point.</p>
+    <p>Tap "Load everything since account creation" for your complete history from day one. For veteran accounts this takes time. You'll see a warning first, and if it stops early it will tell you exactly where it stopped so you can continue from that point.</p>
 
     <h3>Reading the ledger</h3>
     <p>Each row is a real transaction. Tags in the Unit Price column tell you when adjustments were made: "-5% fee" means the Item Market seller fee was deducted, "+travel" means the flight cost was folded into that item's cost basis. "no buy record" usually means the item came from a crime or was already in your inventory before you started using the ledger.</p>
@@ -234,16 +234,16 @@
     <p>This page answers "Am I actually making money?" by combining trading profit with all other tracked income and expenses. Smart insights at the bottom are generated automatically from your real numbers, not hardcoded guesses.</p>
 
     <h3>Unmatched logs</h3>
-    <p>After syncing, scroll to the bottom of the Ledger page and expand "Unmatched log entries." If anything is listed, copy it and send it to Lastborntalkz [4283156] in-game. That is how the system gets taught to handle new log types and improves accuracy for everyone.</p>
+    <p>After syncing, scroll to the bottom of the Ledger page and expand "Unmatched log entries." If anything is listed, copy it and send it to Lastborntalkz [4283156] in game. That is how the system gets taught to handle new log types and improves accuracy for everyone.</p>
 
     <h3>All time view</h3>
-    <p>Switching to "All time" in any section can take a moment with a large history. It will ask you to confirm first. Switching back to it a second time is instant — it uses a cached version.</p>
+    <p>Switching to "All time" in any section can take a moment with a large history. It will ask you to confirm first. Switching back to it a second time is instant, since it uses a cached version.</p>
 
     <h3><span class="warn">⚠ Wipe and Full Resync</span></h3>
     <p class="warn">Found in Settings. This permanently deletes your local ledger and re-pulls everything fresh. Only use it if something looks badly wrong and a normal sync hasn't fixed it.</p>
 
     <h3>Privacy</h3>
-    <p>All data — your API key, your ledger, your history — is stored only in your own browser. Nothing is sent to any server. The creator has no access to your data.</p>
+    <p>All data, including your API key, your ledger, and your history, is stored only in your own browser. Nothing is sent to any server. The creator has no access to your data.</p>
   </div>
 </div>
 
@@ -352,7 +352,7 @@
 <div id="page-ledger" class="page active">
 
 <h1>TORN LEDGER</h1>
-<div class="sub">Lastborn Creative — trading tracker</div>
+<div class="sub">Lastborn Creative, trading tracker</div>
 
 <style>
   @keyframes donateGlow {
@@ -367,7 +367,7 @@
     <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Support →</span>
   </a>
   <div style="border-top:1px solid var(--border); padding-top:8px; font-size:0.78rem; color:var(--text-dim);">
-    Or send Xanax in-game to <strong style="color:var(--blue);">Lastborntalkz [4283156]</strong> — every bit keeps this free.
+    Or send Xanax in game to <strong style="color:var(--blue);">Lastborntalkz [4283156]</strong>. Every bit keeps this free.
   </div>
 </div>
 
@@ -421,8 +421,8 @@
   </div>
   <div class="card total-box">
     <div class="label">MAIN ACCOUNT BALANCE</div>
-    <div class="balance-amount" id="balanceAmount">—</div>
-    <div class="balance-networth" id="balanceNetworth">(Net worth: —)</div>
+    <div class="balance-amount" id="balanceAmount">N/A</div>
+    <div class="balance-networth" id="balanceNetworth">(Net worth: N/A)</div>
   </div>
 </div>
 
@@ -546,7 +546,7 @@
 
   <div class="card">
     <div class="label">AM I ACTUALLY MAKING MONEY?</div>
-    <div id="fhNetAmount" style="font-size:clamp(1.1rem,5vw,1.6rem); font-family:'Roboto Mono',monospace; font-weight:700; margin:4px 0; word-break:break-all;">—</div>
+    <div id="fhNetAmount" style="font-size:clamp(1.1rem,5vw,1.6rem); font-family:'Roboto Mono',monospace; font-weight:700; margin:4px 0; word-break:break-all;">N/A</div>
     <div style="font-size:0.75rem; color:var(--text-dim);">Trading profit minus all tracked expenses</div>
   </div>
 
@@ -623,11 +623,12 @@
   <div class="card">
     <div class="label" style="margin-bottom:8px;">TEACH COUNTRY CODES</div>
     <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:10px; line-height:1.5;">
-      Torn's log only records foreign travel as a numeric area code, not a country name — and that number isn't reliable to guess. Teach the app what each code means once, and it'll label it correctly from now on and relabel any past ledger entries using that code.
+      Torn's log only records foreign travel as a numeric area code, not a country name, and that number isn't reliable to guess. Teach the app what each code means once, and it'll label it correctly from now on and relabel any past ledger entries using that code.
     </div>
     <input type="number" id="areaCode" placeholder="Area code number (e.g. 9)">
     <input type="text" id="areaName" placeholder="Country name (e.g. China)">
     <button onclick="saveAreaLabel()">Save Country Label</button>
+    <button class="secondary" onclick="resetAreaCodes()">Clear All Saved Codes</button>
     <div id="areaListBox" style="font-size:0.75rem; color:var(--text-dim); margin-top:4px; line-height:1.6;">None saved yet.</div>
   </div>
 
@@ -643,9 +644,9 @@
     <div class="label" style="margin-bottom:6px;">ABOUT</div>
     <div style="font-size:0.8rem; color:var(--text-dim); line-height:1.7;">
       <strong style="color:var(--text);">Torn Ledger</strong> is a free financial tracking tool for Torn City, built by <strong style="color:var(--blue);">Lastborntalkz [4283156]</strong>.<br><br>
-      It pulls data from your own Torn API key and calculates real profit and loss across every type of transaction — bazaar sales, item market sales, player trades, foreign purchases, and more. All data is stored only in your own browser and is never sent to any server.<br><br>
-      No full-access key is required. The site generates the exact custom key it needs when you tap "Create the right key for me on Torn."<br><br>
-      If you find a bug, encounter an unmatched log entry, or have a suggestion, reach out to Lastborntalkz [4283156] in-game.
+      It pulls data from your own Torn API key and calculates real profit and loss across every type of transaction, including bazaar sales, item market sales, player trades, and foreign purchases. All data is stored only in your own browser and is never sent to any server.<br><br>
+      No full access key is required. The site generates the exact custom key it needs when you tap "Create the right key for me on Torn."<br><br>
+      If you find a bug, encounter an unmatched log entry, or have a suggestion, reach out to Lastborntalkz [4283156] in game.
     </div>
   </div>
 </div>
@@ -759,6 +760,13 @@ function saveAreaLabel(){
   saveLedger();
 }
 
+function resetAreaCodes(){
+  if(!confirm('This clears every area code label currently saved, including any left over from before, so only what you teach from now on will show. Continue?')) return;
+  areaLabels = {};
+  localStorage.removeItem('tornAreaLabels');
+  renderAreaList();
+}
+
 // Maps common country names to ISO codes, so flags can be computed automatically
 // for any country the user teaches the app via the area-code field.
 function fmtMoney(n){
@@ -815,7 +823,7 @@ function flagForCountry(name){
 }
 function renderAreaList(){
   const el = document.getElementById('areaListBox');
-  if(!el) return; // element removed — area codes are now fully pre-seeded
+  if(!el) return; // safety check in case this ever renders before Settings has loaded
   const entries = Object.entries(areaLabels);
   document.getElementById('areaListBox').innerHTML = entries.length
     ? 'Known: ' + entries.map(([c,n]) => `Area ${c} = ${flagForCountry(n)} ${n}`).join(' · ')
@@ -1456,7 +1464,7 @@ async function syncFromTorn(){
     document.getElementById('unmatchedBox').innerHTML = persistedUnmatched.length
       ? `<div style="color:var(--text-dim); font-size:0.7rem; margin-bottom:4px;">${persistedUnmatched.length} unique unmatched entries saved (newest 500 kept)</div>` +
         persistedUnmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
-      : 'None — everything recognized matched a known pattern.';
+      : 'None. Everything recognized matched a known pattern.';
 
     setStatus('Resolving trader names…');
     const remaining = await resolveNames(apiKey);
@@ -1466,21 +1474,21 @@ async function syncFromTorn(){
     // 6 months of history in the background, instead of leaving a brand-new user
     // sitting on just the most recent ~100 log entries.
     if(!localStorage.getItem('tornBackfillDone')){
-      setStatus(`Synced. ${added} new line(s) added. Pulling your last 6 months of history in the background — this can take a while for an active account…`, true);
+      setStatus(`Synced. ${added} new line(s) added. Pulling your last 6 months of history in the background. This can take a while for an active account…`, true);
       const sixMonthsAgo = Date.now() - (182 * 24 * 60 * 60 * 1000);
       const result = await pullHistorySince(apiKey, catalog, sixMonthsAgo, (msg) => setStatus(msg, true));
       localStorage.setItem('tornBackfillDone', '1');
       saveLedger();
       if(result.hitCap && result.stoppedAtTs){
         const stoppedDate = new Date(result.stoppedAtTs).toISOString().slice(0,10);
-        setStatus(`Stopped early after a large pull — reached back to ${stoppedDate}, not the full 6 months yet. ` +
+        setStatus(`Stopped early after a large pull. Reached back to ${stoppedDate}, not the full 6 months yet. ` +
           `Use "Load older history" with "To" set to ${stoppedDate} to keep going further back.`, false);
       } else {
         setStatus(`Done. ${added + result.totalAdded} total new line(s) added, covering roughly the last 6 months. ${unmatched.length} unrecognized this sync.`, true);
       }
     } else {
       setStatus(`Synced. ${added} new line(s) added, ${unmatched.length} unrecognized.` +
-        (remaining > 0 ? ` ${remaining} trader name(s) left to resolve — sync again to continue.` : ''), true);
+        (remaining > 0 ? ` ${remaining} trader name(s) left to resolve. Sync again to continue.` : ''), true);
     }
 
   }catch(err){
@@ -1497,7 +1505,7 @@ async function loadEntireHistory(){
   statusEl.className = 'status';
   const signupDate = await getSignupDate(apiKey);
   if(!signupDate){
-    statusEl.textContent = "Couldn't detect your account creation date — pick a From date manually instead.";
+    statusEl.textContent = "Couldn't detect your account creation date. Pick a From date manually instead.";
     statusEl.className = 'status err';
     return;
   }
@@ -1534,7 +1542,7 @@ async function loadOlderHistory(){
     const proceed = confirm(
       `This range covers about ${daySpan} days. For an older or very active account, ` +
       `this can take several minutes and a lot of batches, since Torn only allows 100 ` +
-      `log entries per request. It will keep working in the background — just don't close ` +
+      `log entries per request. It will keep working in the background, just don't close ` +
       `the tab. Continue?`
     );
     if(!proceed){ statusEl.textContent = 'Cancelled.'; statusEl.className = 'status'; return; }
@@ -1552,7 +1560,7 @@ async function loadOlderHistory(){
     if(result.hitCap && result.stoppedAtTs){
       const stoppedDate = new Date(result.stoppedAtTs).toISOString().slice(0,10);
       statusEl.className = 'status err';
-      statusEl.textContent = `Stopped early — reached back to ${stoppedDate}, didn't fully reach ${fromDateStr} yet. ` +
+      statusEl.textContent = `Stopped early. Reached back to ${stoppedDate}, didn't fully reach ${fromDateStr} yet. ` +
         `Set "To" to ${stoppedDate} and run Load again to keep going further back.`;
     } else {
       statusEl.className = 'status ok';
@@ -1562,7 +1570,7 @@ async function loadOlderHistory(){
     const isEndOfHistory = err.message && err.message.includes('Failed to fetch');
     statusEl.className = isEndOfHistory ? 'status ok' : 'status err';
     statusEl.textContent = isEndOfHistory
-      ? 'All available history has been fetched — nothing further found in Torn\'s logs.'
+      ? 'All available history has been fetched. Nothing further found in Torn\'s logs.'
       : 'Error: ' + err.message + '. Everything pulled before this point has been saved.';
     saveLedger();
   }
@@ -1615,7 +1623,7 @@ function escapeHtml(str){
 function formatRowTime(row){
   // Torn City Time (TCT) is officially identical to UTC — always, no daylight saving.
   const ts = row.ts || Date.parse(row.date + 'T00:00:00Z');
-  if(!ts) return { tct: '—', local: '—' };
+  if(!ts) return { tct: 'N/A', local: 'N/A' };
   const d = new Date(ts);
   const pad = n => String(n).padStart(2, '0');
   const tct = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
@@ -1659,7 +1667,7 @@ function setActiveQuickButton(ids, activeId){
 function confirmAllTime(){
   return confirm(
     "Showing everything you've synced can take a moment to load if you have a lot of " +
-    "history — it's not stuck, just processing. Continue?"
+    "history. It's not stuck, just processing. Continue?"
   );
 }
 
@@ -1735,13 +1743,13 @@ function render(){
 
   for(const row of sorted){
     const total = row.qty * row.unitPrice;
-    let profitCell = '—';
+    let profitCell = 'N/A';
     if(row.type === 'sell'){
       const { profit, hasCostRecord } = computeSellProfit(row);
-      const noteTag = hasCostRecord ? '' : ` <span class="tag" title="No matching buy in your ledger — full sale counted as profit">no buy record</span>`;
+      const noteTag = hasCostRecord ? '' : ` <span class="tag" title="No matching buy in your ledger. Full sale counted as profit">no buy record</span>`;
       profitCell = `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${profit >= 0 ? '+' : ''}${fmtMoney(Math.abs(profit))}</span>${noteTag}`;
     }
-    const qtyTag = row.qtyEstimated ? ` <span class="tag" title="Torn's trade log doesn't give an exact quantity — estimated by counting repeated item names in the trade description">est.</span>` : '';
+    const qtyTag = row.qtyEstimated ? ` <span class="tag" title="Torn's trade log doesn't give an exact quantity. Estimated by counting repeated item names in the trade description">est.</span>` : '';
     const priceTag = row.priceEstimated ? ` <span class="tag" title="No market value found for one of these items, so this trade's total was split evenly instead of by value">split</span>` : '';
     const feeTag = row.feeApplied ? ` <span class="tag" title="Item Market's 5% seller fee has already been subtracted from this price">-5% fee</span>` : '';
     const travelTag = row.travelFeeApplied ? ` <span class="tag" title="This item's cost includes a share of the flight cost for that trip">+travel</span>` : '';
@@ -1906,16 +1914,16 @@ function renderFinancialHealth(){
 
     if(rehabPct > 5) insights.push(`Rehab has cost you ${rehabPct.toFixed(1)}% of your total trading profit.`);
     if(propertyCost > 0) insights.push(`You've paid ${fmtMoney(propertyCost)} in property upkeep. This is a fixed recurring cost that reduces your net position regardless of trading performance.`);
-    if(muggingPct > 10) insights.push(`You've lost ${muggingPct.toFixed(1)}% of your trading profit to mugging — consider this your biggest uncontrolled expense.`);
+    if(muggingPct > 10) insights.push(`You've lost ${muggingPct.toFixed(1)}% of your trading profit to mugging. That's your biggest uncontrolled expense.`);
     if(casinoPct > 5) insights.push(`Casino spending has consumed ${casinoPct.toFixed(1)}% of your trading profit.`);
     if(casinoWin > casinoCost) insights.push(`You're actually net positive from the casino (+${fmtMoney(casinoWin - casinoCost)}). Rare.`);
     if(casinoWin < casinoCost) insights.push(`You've spent ${fmtMoney(casinoCost - casinoWin)} more at the casino than you've won back.`);
-    if(rehabCost === 0 && muggingLoss === 0) insights.push('No rehab or mugging losses recorded yet — your synced history may not cover enough history for this to be meaningful.');
+    if(rehabCost === 0 && muggingLoss === 0) insights.push('No rehab or mugging losses recorded yet. Your synced history may not cover enough history for this to be meaningful.');
     if(netPosition < 0) insights.push(`Despite ${fmtMoney(tradingProfit)} in trading profit, your net position is negative after factoring in all tracked expenses.`);
-    if(jobIncome > 0 && jobIncome < 1000) insights.push(`Your job income (${fmtMoney(jobIncome)}) is minimal compared to trading — worth noting but not significant.`);
+    if(jobIncome > 0 && jobIncome < 1000) insights.push(`Your job income (${fmtMoney(jobIncome)}) is minimal compared to trading. Worth noting but not significant.`);
     if(insights.length === 0) insights.push('Your finances look healthy based on what\'s been synced. Keep trading.');
   } else {
-    insights.push('No data yet — sync your ledger first.');
+    insights.push('No data yet. Sync your ledger first.');
   }
 
   const insightsEl = document.getElementById('fhInsights');
@@ -1945,8 +1953,8 @@ function renderCashFlow(){
       today: 'Showing: today',
       month: 'Showing: this month',
       all: 'Showing: all time',
-      date: `Showing: ${cashFlowFilter.value || '—'}`,
-      monthpick: `Showing: ${cashFlowFilter.value || '—'}`
+      date: `Showing: ${cashFlowFilter.value || 'N/A'}`,
+      monthpick: `Showing: ${cashFlowFilter.value || 'N/A'}`
     };
     labelEl.textContent = labels[cashFlowFilter.mode] || 'Showing: all time';
   }
@@ -1976,7 +1984,7 @@ function renderDayProfit(){
   let dayTotal = 0;
   sells.forEach(row => { dayTotal += computeSellProfit(row).profit; });
 
-  label.textContent = dateVal ? ('PROFIT FOR ' + dateVal) : 'PROFIT — ALL TIME';
+  label.textContent = dateVal ? ('PROFIT FOR ' + dateVal) : 'PROFIT FOR ALL TIME';
   amountEl.textContent = (dayTotal >= 0 ? '+' : '') + fmtMoney(dayTotal);
   amountEl.style.color = dayTotal >= 0 ? 'var(--green)' : 'var(--red)';
 }
