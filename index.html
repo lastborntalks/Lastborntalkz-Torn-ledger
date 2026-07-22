@@ -155,6 +155,8 @@
     line-height: 1.2;
   }
   .total-box .label{ color: var(--text-dim); font-size: 0.8rem; font-weight:600; }
+  .compact-main{ display:block; }
+  .compact-full{ display:block; font-size:0.62rem; color: var(--text-dim); font-weight:400; margin-top:2px; letter-spacing:0; }
   details summary{ cursor: pointer; color: var(--text-dim); font-size: 0.8rem; }
   .row-buttons{ display:flex; gap:8px; }
   .row-buttons button{ flex:1; }
@@ -404,6 +406,8 @@
   .stats-row .card{ flex:1; margin-bottom:0; min-width:0; overflow:hidden; padding:10px; }
   .stats-row .amount{ font-size:clamp(0.6rem, 2.6vw, 0.9rem); word-break:break-all; font-family:'Roboto Mono',monospace; font-weight:700; line-height:1.3; }
   .stats-row .label{ font-size:0.68rem; }
+  .summary-stack{ display:flex; flex-direction:column; gap:12px; }
+  .summary-stack .card{ width:100%; margin-bottom:0; }
   .total-box{ text-align:left; }
   .total-box .amount{ font-size: 1.5rem; }
   .balance-amount{ font-size: 1.3rem; font-family: 'Roboto Mono', monospace; font-weight:700; color: var(--text); }
@@ -546,7 +550,7 @@
     <div style="font-size:0.75rem; color:var(--text-dim);">Trading profit minus all tracked expenses</div>
   </div>
 
-  <div class="stats-row" style="margin-bottom:16px;">
+  <div class="summary-stack" style="margin-bottom:16px;">
     <div class="card total-box">
       <div class="label">TRADING PROFIT</div>
       <div class="amount profit-pos" id="fhTradingProfit">$0</div>
@@ -759,6 +763,26 @@ function fmtMoneyShort(n){
   return (Number(n) < 0 ? '-$' : '$') + abs.toLocaleString('en-US');
 }
 
+function trimTrailingZero(x){
+  return x.toFixed(1).replace(/\.0$/, '');
+}
+
+// Compact display: 10k, 85.8M, 1.2B etc, with the full precise amount
+// rendered underneath in small dim text. Returns HTML (use with innerHTML).
+// Pass signed=true to prefix a '+' on non-negative values (e.g. profit totals).
+function fmtCompact(n, signed){
+  const num = Number(n) || 0;
+  const abs = Math.abs(num);
+  let compactNum;
+  if(abs >= 1e9) compactNum = trimTrailingZero(abs / 1e9) + 'B';
+  else if(abs >= 1e6) compactNum = trimTrailingZero(abs / 1e6) + 'M';
+  else if(abs >= 1e3) compactNum = trimTrailingZero(abs / 1e3) + 'k';
+  else compactNum = abs.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const sign = num < 0 ? '-' : (signed ? '+' : '');
+  const full = fmtMoney(num);
+  return `<span class="compact-main">${sign}$${compactNum}</span><span class="compact-full">(${full})</span>`;
+}
+
 const COUNTRY_TO_ISO = {
   'mexico':'MX','cayman islands':'KY','caymans':'KY','cayman':'KY',
   'canada':'CA','hawaii':'US','united kingdom':'GB','uk':'GB',
@@ -885,7 +909,8 @@ const IGNORE_PATTERNS = [
   'merit assign','honor awarded','item market add','item market price edit','item market remove',
   'bazaar price edit',
   'forums','message ','faction newsletter','faction money balance change','tell your story',
-  'racing join custom race','racing create custom race','company train receive'
+  'racing join custom race','racing create custom race','company train receive',
+  'revive receive','revive send','stock special passive active','loan decrease'
 ];
 
 function isNoise(title){
@@ -1072,14 +1097,6 @@ function ingestLogBatch(logObj, catalog){
       }
       continue;
     }
-    if(title === 'loan decrease'){
-      const uid = 'cash-' + id;
-      if(!cashEvents.some(e => e.syncId === uid)){
-        // Loan repayment — money leaving your account to service a loan
-        cashEvents.push({ syncId: uid, date, ts, category: 'loan_payment', kind: 'loss', amount: Number(d.returned) || 0 });
-      }
-      continue;
-    }
     if(title === 'company employee pay'){
       const uid = 'cash-' + id;
       if(!cashEvents.some(e => e.syncId === uid)){
@@ -1211,7 +1228,16 @@ function ingestLogBatch(logObj, catalog){
     const items = Array.isArray(d.items) ? d.items
       : source === 'points' ? [{ id: null, name: 'Points', qty: d.quantity || 1 }]
       : [{id: d.item, qty: d.quantity || 1}];
-    let unitCost = Number(d.cost_each ?? d.cost ?? d.price ?? 0);
+    // NPC city shop purchases store the TOTAL cost in d.cost and quantity in
+    // d.quantity (no per-unit d.cost_each field) — divide it out here so the
+    // unit price actually reflects the per-item cost instead of the full total.
+    let unitCost;
+    if(source === 'npc' && (d.cost_each === undefined || d.cost_each === null)){
+      const npcQty = Number(d.quantity) || 0;
+      unitCost = npcQty > 0 ? (Number(d.cost) || 0) / npcQty : 0;
+    } else {
+      unitCost = Number(d.cost_each ?? d.cost ?? d.price ?? 0);
+    }
     let feeApplied = false;
 
     // Item Market has charged a 5% seller fee since June 2025 — Bazaar does not.
@@ -1657,7 +1683,7 @@ function render(){
     body.innerHTML = '';
     empty.style.display = 'block';
     empty.textContent = 'No entries yet. Sync or add manually above.';
-    document.getElementById('totalProfit').textContent = '$0';
+    document.getElementById('totalProfit').innerHTML = fmtCompact(0, true);
     renderDayProfit();
     return;
   }
@@ -1665,8 +1691,7 @@ function render(){
   // Total profit/loss always reflects ALL-TIME data, regardless of the table filter below
   let totalProfit = 0;
   ledger.filter(r => r.type === 'sell').forEach(row => { totalProfit += computeSellProfit(row).profit; });
-  document.getElementById('totalProfit').textContent =
-    (totalProfit >= 0 ? '+' : '') + fmtMoney(totalProfit);
+  document.getElementById('totalProfit').innerHTML = fmtCompact(totalProfit, true);
   document.getElementById('totalProfit').style.color = totalProfit >= 0 ? 'var(--green)' : 'var(--red)';
 
   // The "All time" view over a large ledger is the expensive one to build — reuse it
@@ -1845,11 +1870,13 @@ function renderFinancialHealth(){
 
   const netEl = document.getElementById('fhNetAmount');
   if(netEl){
-    netEl.textContent = (netPosition >= 0 ? '+' : '') + fmtMoney(netPosition);
+    netEl.innerHTML = fmtCompact(netPosition, true);
     netEl.style.color = netPosition >= 0 ? 'var(--green)' : 'var(--red)';
   }
-  set('fhTradingProfit', tradingProfit);
-  set('fhMuggingLoss', muggingLoss);
+  const tpEl = document.getElementById('fhTradingProfit');
+  if(tpEl) tpEl.innerHTML = fmtCompact(Math.abs(tradingProfit));
+  const mlEl = document.getElementById('fhMuggingLoss');
+  if(mlEl) mlEl.innerHTML = fmtCompact(Math.abs(muggingLoss));
   set('fhRehabTotal', rehabCost);
   set('fhPropertyTotal', propertyCost);
   set('fhTravelTotal', travelCost);
@@ -1969,6 +1996,39 @@ function importLedger(event){
   };
   reader.readAsText(file);
 }
+
+// --- Swipe navigation between tabs ---
+// Swiping left moves to the next tab (ledger -> health -> settings),
+// swiping right moves to the previous one. Mostly-vertical touches (scrolling)
+// are ignored so this doesn't interfere with normal page scrolling.
+(function setupSwipeNav(){
+  let touchStartX = 0, touchStartY = 0, touchActive = false;
+  const SWIPE_THRESHOLD = 60; // minimum horizontal px to count as a swipe
+
+  document.addEventListener('touchstart', (e) => {
+    if(e.touches.length !== 1) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchActive = true;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if(!touchActive || !e.changedTouches || e.changedTouches.length === 0) return;
+    touchActive = false;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if(Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.5) return; // ignore mostly-vertical scrolls
+
+    const currentTab = TABS.find(t => document.getElementById('page-' + t)?.classList.contains('active')) || TABS[0];
+    const idx = TABS.indexOf(currentTab);
+    if(dx < 0 && idx < TABS.length - 1){
+      switchTab(TABS[idx + 1]); // swipe left -> next tab
+    } else if(dx > 0 && idx > 0){
+      switchTab(TABS[idx - 1]); // swipe right -> previous tab
+    }
+  }, { passive: true });
+})();
+
 // --- Initialization: runs last, after every function/const above is defined ---
 const todayStr = new Date().toISOString().slice(0,10);
 ['historyFromDate','profitDate','ledgerFilterInput','cfDateInput','historyToDate'].forEach(id => {
@@ -2004,7 +2064,7 @@ const TORN_AREA_CODES = {
   '6': 'Canada',
   '7': 'Argentina',
   '8': 'United Kingdom',
-  '9': 'Canada',
+  '9': 'China', // corrected 2026-07-22: was wrongly seeded as Canada — user-confirmed actual destination is China
   '10': 'United Kingdom',
   '11': 'Switzerland',
   '12': 'Cayman Islands',
@@ -2016,7 +2076,14 @@ const TORN_AREA_CODES = {
 // Player-confirmed codes always win regardless of any prior seeded value
 const CONFIRMED_AREAS = {
   '2':'Mexico','3':'Hawaii','4':'South Africa',
-  '7':'Argentina','9':'Canada','10':'United Kingdom','12':'Cayman Islands'
+  '7':'Argentina','9':'China','10':'United Kingdom','12':'Cayman Islands'
+  // NOTE: '9' was previously (incorrectly) hardcoded as 'Canada' in this list.
+  // Because this object overrides areaLabels on every single page load, that
+  // bad value would have silently re-applied even if a user tried to fix it
+  // manually via the area-code correction field. Fixed 2026-07-22 to 'China'
+  // per user-confirmed travel report. If another code here ever turns out to
+  // be wrong, it needs to be corrected HERE (not just in local storage),
+  // otherwise the fix will not survive a page reload.
 };
 
 Object.entries(TORN_AREA_CODES).forEach(([code, country]) => {
@@ -2026,6 +2093,21 @@ Object.entries(CONFIRMED_AREAS).forEach(([code, country]) => {
   areaLabels[code] = country; // override anything wrong that was seeded before
 });
 localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
+
+// One-time retroactive fix: any ledger rows already saved under the old,
+// incorrect area-9 label ("Canada") get relabeled to the corrected country
+// now that the seed data itself has been fixed above. Without this, the
+// wrong name would stay frozen on old rows even though new syncs are correct.
+(function fixArea9Mislabel(){
+  let changed = false;
+  ledger.forEach(r => {
+    if(r.source === 'abroad' && r.areaCode === '9' && r.counterparty !== 'China'){
+      r.counterparty = 'China';
+      changed = true;
+    }
+  });
+  if(changed) localStorage.setItem('tornLedger', JSON.stringify(ledger));
+})();
 
 renderAreaList();
 
