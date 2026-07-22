@@ -258,11 +258,11 @@
   100%{ transform:translateX(-110%); opacity:0; }
 }
 #resyncNotif{
-  position:fixed; top:60px; left:12px; z-index:200;
+  position:fixed; top:60px; left:12px; right:12px; z-index:200;
   background:var(--blue); color:#fff;
-  border-radius:8px; padding:10px 14px;
-  font-size:0.78rem; font-family:'Inter',sans-serif; font-weight:600;
-  max-width:220px; box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  border-radius:8px; padding:14px 16px;
+  font-size:1rem; line-height:1.4; font-family:'Inter',sans-serif; font-weight:600;
+  max-width:340px; box-shadow:0 4px 16px rgba(0,0,0,0.3);
   animation: slideInNotif 10s ease forwards;
   pointer-events:none;
 }
@@ -621,6 +621,17 @@
   </div>
 
   <div class="card">
+    <div class="label" style="margin-bottom:8px;">TEACH COUNTRY CODES</div>
+    <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:10px; line-height:1.5;">
+      Torn's log only records foreign travel as a numeric area code, not a country name — and that number isn't reliable to guess. Teach the app what each code means once, and it'll label it correctly from now on and relabel any past ledger entries using that code.
+    </div>
+    <input type="number" id="areaCode" placeholder="Area code number (e.g. 9)">
+    <input type="text" id="areaName" placeholder="Country name (e.g. China)">
+    <button onclick="saveAreaLabel()">Save Country Label</button>
+    <div id="areaListBox" style="font-size:0.75rem; color:var(--text-dim); margin-top:4px; line-height:1.6;">None saved yet.</div>
+  </div>
+
+  <div class="card">
     <div class="label" style="margin-bottom:8px;">DATA TOOLS</div>
     <button class="secondary" onclick="exportLedger()" style="margin-bottom:8px;">Export ledger backup</button>
     <button class="secondary" onclick="document.getElementById('importFileSt').click()" style="margin-bottom:8px;">Import ledger backup</button>
@@ -667,11 +678,11 @@ function saveUnmatched(newEntries){
 function saveCashEvents(){
   localStorage.setItem('tornCashEvents', JSON.stringify(cashEvents));
 }
+// Area codes are taught by the user, not guessed — Torn's log only gives a
+// numeric code for foreign destinations, and different sources disagree on
+// what each number means. Nothing is pre-seeded here; use the "Teach Country
+// Codes" panel in Settings to tell the app what a code actually is.
 let areaLabels = JSON.parse(localStorage.getItem('tornAreaLabels') || '{}');
-if(Object.keys(areaLabels).length === 0){
-  areaLabels = { '4': 'South Africa' }; // seeded from confirmed report
-  localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
-}
 
 // One-time cleanup: fix rows created before area labels / timestamps existed
 (function migrateLedger(){
@@ -1997,38 +2008,6 @@ function importLedger(event){
   reader.readAsText(file);
 }
 
-// --- Swipe navigation between tabs ---
-// Swiping left moves to the next tab (ledger -> health -> settings),
-// swiping right moves to the previous one. Mostly-vertical touches (scrolling)
-// are ignored so this doesn't interfere with normal page scrolling.
-(function setupSwipeNav(){
-  let touchStartX = 0, touchStartY = 0, touchActive = false;
-  const SWIPE_THRESHOLD = 60; // minimum horizontal px to count as a swipe
-
-  document.addEventListener('touchstart', (e) => {
-    if(e.touches.length !== 1) return;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    touchActive = true;
-  }, { passive: true });
-
-  document.addEventListener('touchend', (e) => {
-    if(!touchActive || !e.changedTouches || e.changedTouches.length === 0) return;
-    touchActive = false;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if(Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.5) return; // ignore mostly-vertical scrolls
-
-    const currentTab = TABS.find(t => document.getElementById('page-' + t)?.classList.contains('active')) || TABS[0];
-    const idx = TABS.indexOf(currentTab);
-    if(dx < 0 && idx < TABS.length - 1){
-      switchTab(TABS[idx + 1]); // swipe left -> next tab
-    } else if(dx > 0 && idx > 0){
-      switchTab(TABS[idx - 1]); // swipe right -> previous tab
-    }
-  }, { passive: true });
-})();
-
 // --- Initialization: runs last, after every function/const above is defined ---
 const todayStr = new Date().toISOString().slice(0,10);
 ['historyFromDate','profitDate','ledgerFilterInput','cfDateInput','historyToDate'].forEach(id => {
@@ -2049,66 +2028,9 @@ setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], 'lfBtnToday');
 setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], 'cfBtnAll');
 setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnAll');
 
-// Seed all known Torn travel area codes — confirmed from player reports and community data.
-// Area codes confirmed by players: 2=Mexico, 3=Hawaii, 4=South Africa, 10=UK.
-// Others sourced from community tools and match Torn's destination list.
-// ⚠ If any area code here shows incorrectly for you, use the manual entry above to correct it.
-// Player-confirmed area codes (hard facts from actual game travel):
-// 2=Mexico, 3=Hawaii, 4=South Africa, 7=Argentina, 9=Canada, 10=UK, 12=Cayman Islands
-// Remaining codes filled from community sources — correct any wrong ones via the manual entry above.
-const TORN_AREA_CODES = {
-  '2': 'Mexico',
-  '3': 'Hawaii',
-  '4': 'South Africa',
-  '5': 'Cayman Islands',
-  '6': 'Canada',
-  '7': 'Argentina',
-  '8': 'United Kingdom',
-  '9': 'China', // corrected 2026-07-22: was wrongly seeded as Canada — user-confirmed actual destination is China
-  '10': 'United Kingdom',
-  '11': 'Switzerland',
-  '12': 'Cayman Islands',
-  '13': 'Japan',
-  '14': 'China',
-  '15': 'UAE'
-};
-
-// Player-confirmed codes always win regardless of any prior seeded value
-const CONFIRMED_AREAS = {
-  '2':'Mexico','3':'Hawaii','4':'South Africa',
-  '7':'Argentina','9':'China','10':'United Kingdom','12':'Cayman Islands'
-  // NOTE: '9' was previously (incorrectly) hardcoded as 'Canada' in this list.
-  // Because this object overrides areaLabels on every single page load, that
-  // bad value would have silently re-applied even if a user tried to fix it
-  // manually via the area-code correction field. Fixed 2026-07-22 to 'China'
-  // per user-confirmed travel report. If another code here ever turns out to
-  // be wrong, it needs to be corrected HERE (not just in local storage),
-  // otherwise the fix will not survive a page reload.
-};
-
-Object.entries(TORN_AREA_CODES).forEach(([code, country]) => {
-  if(!areaLabels[code]) areaLabels[code] = country;
-});
-Object.entries(CONFIRMED_AREAS).forEach(([code, country]) => {
-  areaLabels[code] = country; // override anything wrong that was seeded before
-});
-localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
-
-// One-time retroactive fix: any ledger rows already saved under the old,
-// incorrect area-9 label ("Canada") get relabeled to the corrected country
-// now that the seed data itself has been fixed above. Without this, the
-// wrong name would stay frozen on old rows even though new syncs are correct.
-(function fixArea9Mislabel(){
-  let changed = false;
-  ledger.forEach(r => {
-    if(r.source === 'abroad' && r.areaCode === '9' && r.counterparty !== 'China'){
-      r.counterparty = 'China';
-      changed = true;
-    }
-  });
-  if(changed) localStorage.setItem('tornLedger', JSON.stringify(ledger));
-})();
-
+// No hardcoded area-code guesses. Whatever country codes you've taught the
+// app (via Settings → Teach Country Codes) are already loaded into
+// areaLabels above from local storage — nothing further to seed here.
 renderAreaList();
 
 const savedTheme = localStorage.getItem('tornTheme') || 'system';
