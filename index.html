@@ -583,6 +583,10 @@
       <span style="color:var(--text-dim);">Gym memberships</span>
       <span id="fhGymTotal" style="font-weight:600;">$0</span>
     </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
+      <span style="color:var(--text-dim);">Fortune teller</span>
+      <span id="fhFortuneTotal" style="font-weight:600;">$0</span>
+    </div>
     <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;">
       <span style="color:var(--text-dim); font-weight:700;">Total expenses</span>
       <span id="fhTotalExpenses" class="profit-neg" style="font-weight:700;">$0</span>
@@ -627,7 +631,7 @@
   <div class="card">
     <div class="label" style="margin-bottom:8px;">TEACH COUNTRY CODES</div>
     <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:10px; line-height:1.5;">
-      Torn's log only records foreign travel as a numeric area code, not a country name, and that number isn't reliable to guess. Teach the app what each code means once, and it'll label it correctly from now on and relabel any past ledger entries using that code.
+      Torn's log only records foreign travel as a numeric area code, not a country name, and that number isn't reliable to guess. Teach the app what each code means once, and it'll label it correctly from now on and relabel any past ledger entries using that code. Codes marked 🔒 are locked in and can't be changed here.
     </div>
     <input type="number" id="areaCode" placeholder="Area code number (e.g. 9)">
     <input type="text" id="areaName" placeholder="Country name (e.g. China)">
@@ -752,6 +756,10 @@ function saveAreaLabel(){
   const code = document.getElementById('areaCode').value.trim();
   const name = document.getElementById('areaName').value.trim();
   if(!code || !name){ alert('Enter both the area number and country name.'); return; }
+  if(typeof HARDCODED_AREAS !== 'undefined' && HARDCODED_AREAS[code]){
+    alert(`Area ${code} is locked in as ${HARDCODED_AREAS[code]} and can't be changed here.`);
+    return;
+  }
   areaLabels[code] = name;
   localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
   document.getElementById('areaCode').value = '';
@@ -765,9 +773,13 @@ function saveAreaLabel(){
 }
 
 function resetAreaCodes(){
-  if(!confirm('This clears every area code label currently saved, including any left over from before, so only what you teach from now on will show. Continue?')) return;
-  areaLabels = {};
-  localStorage.removeItem('tornAreaLabels');
+  if(!confirm('This clears every area code label you\'ve manually taught (locked codes are unaffected). Continue?')) return;
+  if(typeof HARDCODED_AREAS !== 'undefined'){
+    areaLabels = { ...HARDCODED_AREAS };
+  } else {
+    areaLabels = {};
+  }
+  localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
   renderAreaList();
 }
 
@@ -829,8 +841,11 @@ function renderAreaList(){
   const el = document.getElementById('areaListBox');
   if(!el) return; // safety check in case this ever renders before Settings has loaded
   const entries = Object.entries(areaLabels);
-  document.getElementById('areaListBox').innerHTML = entries.length
-    ? 'Known: ' + entries.map(([c,n]) => `Area ${c} = ${flagForCountry(n)} ${n}`).join(' · ')
+  el.innerHTML = entries.length
+    ? 'Known: ' + entries.map(([c,n]) => {
+        const locked = (typeof HARDCODED_AREAS !== 'undefined' && HARDCODED_AREAS[c]) ? ' 🔒' : '';
+        return `Area ${c} = ${flagForCountry(n)} ${n}${locked}`;
+      }).join(' · ')
     : 'None saved yet.';
 }
 
@@ -1112,6 +1127,13 @@ function ingestLogBatch(logObj, catalog){
         // Buying gym access is a real cash expense, distinct from noise like
         // "gym activate"/"gym train" which involve no money at all.
         cashEvents.push({ syncId: uid, date, ts, category: 'gym', kind: 'loss', amount: Number(d.cost) || 0 });
+      }
+      continue;
+    }
+    if(title === 'fortune teller'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        cashEvents.push({ syncId: uid, date, ts, category: 'fortune', kind: 'loss', amount: Number(d.cost) || 0 });
       }
       continue;
     }
@@ -1880,6 +1902,7 @@ function renderFinancialHealth(){
   const propertyCost = cashEvents.filter(e => e.category === 'property').reduce((s,e) => s + e.amount, 0);
   const casinoCost = cashEvents.filter(e => e.category === 'casino').reduce((s,e) => s + e.amount, 0);
   const gymCost = cashEvents.filter(e => e.category === 'gym').reduce((s,e) => s + e.amount, 0);
+  const fortuneCost = cashEvents.filter(e => e.category === 'fortune').reduce((s,e) => s + e.amount, 0);
   const casinoWin = cashEvents.filter(e => e.category === 'casino_win').reduce((s,e) => s + e.amount, 0);
   const muggingLoss = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
   const jobIncome = cashEvents.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
@@ -1891,7 +1914,7 @@ function renderFinancialHealth(){
   // that were explicitly captured during ingest as the authoritative source.
   const travelCost = cashEvents.filter(e => e.category === 'travel_fee').reduce((s,e) => s + e.amount, 0);
 
-  const totalExpenses = rehabCost + casinoCost + travelCost + propertyCost + muggingLoss + gymCost;
+  const totalExpenses = rehabCost + casinoCost + travelCost + propertyCost + muggingLoss + gymCost + fortuneCost;
   const netPosition = tradingProfit + jobIncome + missionIncome + casinoWin - totalExpenses;
 
   const set = (id, val, sign = false) => {
@@ -1915,6 +1938,7 @@ function renderFinancialHealth(){
   set('fhTravelTotal', travelCost);
   set('fhCasinoTotal', casinoCost);
   set('fhGymTotal', gymCost);
+  set('fhFortuneTotal', fortuneCost);
   set('fhTotalExpenses', totalExpenses);
   set('fhJobIncome', jobIncome);
   set('fhMissionIncome', missionIncome);
@@ -1932,6 +1956,7 @@ function renderFinancialHealth(){
     if(muggingPct > 10) insights.push(`You've lost ${muggingPct.toFixed(1)}% of your trading profit to mugging. That's your biggest uncontrolled expense.`);
     if(casinoPct > 5) insights.push(`Casino spending has consumed ${casinoPct.toFixed(1)}% of your trading profit.`);
     if(gymCost > 0) insights.push(`You've spent ${fmtMoney(gymCost)} on gym memberships.`);
+    if(fortuneCost > 0) insights.push(`You've spent ${fmtMoney(fortuneCost)} on the fortune teller.`);
     if(casinoWin > casinoCost) insights.push(`You're actually net positive from the casino (+${fmtMoney(casinoWin - casinoCost)}). Rare.`);
     if(casinoWin < casinoCost) insights.push(`You've spent ${fmtMoney(casinoCost - casinoWin)} more at the casino than you've won back.`);
     if(rehabCost === 0 && muggingLoss === 0) insights.push('No rehab or mugging losses recorded yet. Your synced history may not cover enough history for this to be meaningful.');
@@ -2052,9 +2077,39 @@ setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], 'lfBtnToday');
 setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], 'cfBtnAll');
 setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnAll');
 
-// No hardcoded area-code guesses. Whatever country codes you've taught the
-// app (via Settings → Teach Country Codes) are already loaded into
-// areaLabels above from local storage — nothing further to seed here.
+// HARDCODED area codes. These are locked in permanently: they force-apply on
+// every page load and CANNOT be changed or cleared through the Teach Country
+// Codes tool in Settings (saveAreaLabel() below blocks edits to any code in
+// this list). To add more later, just add another 'code': 'Country' line here.
+const HARDCODED_AREAS = {
+  '2': 'Mexico',
+  '3': 'Hawaii',
+  '4': 'South Africa',
+  '6': 'China',
+  '8': 'Switzerland',
+  '9': 'Canada',
+  '10': 'United Kingdom',
+  '11': 'UAE',
+  '12': 'Cayman Islands'
+};
+Object.entries(HARDCODED_AREAS).forEach(([code, country]) => {
+  areaLabels[code] = country; // always wins, every load, no exceptions
+});
+localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
+
+// Retroactively fix any ledger rows that were saved under a different label
+// for one of these locked codes before it was hardcoded.
+(function fixHardcodedAreaRows(){
+  let changed = false;
+  ledger.forEach(r => {
+    if(r.source === 'abroad' && r.areaCode && HARDCODED_AREAS[r.areaCode] && r.counterparty !== HARDCODED_AREAS[r.areaCode]){
+      r.counterparty = HARDCODED_AREAS[r.areaCode];
+      changed = true;
+    }
+  });
+  if(changed) localStorage.setItem('tornLedger', JSON.stringify(ledger));
+})();
+
 renderAreaList();
 
 const savedTheme = localStorage.getItem('tornTheme') || 'system';
