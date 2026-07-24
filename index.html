@@ -681,6 +681,7 @@ function saveUnmatched(newEntries){
     seen.add(key);
     return true;
   }).slice(0, 500);
+  pruneStaleUnmatched(); // drop anything that's since become recognized
   localStorage.setItem('tornUnmatched', JSON.stringify(persistedUnmatched));
 }
 
@@ -953,6 +954,40 @@ const IGNORE_PATTERNS = [
 
 function isNoise(title){
   return IGNORE_PATTERNS.some(p => title.includes(p));
+}
+
+// Mirrors every title this app actually knows how to handle (ignored as noise,
+// or turned into a cash event / ledger row). Used to clean out the persisted
+// "unmatched" list whenever a title that used to be unrecognized has since
+// been given a handler, so fixed entries stop cluttering that box for good
+// instead of sitting there until a full Wipe & Resync.
+const KNOWN_HANDLED_TITLES = [
+  'job pay','attack mug receive','attack mug','crime success money gain (new)',
+  'faction deposit money','faction payout money balance receive','faction give money receive',
+  'rehab','gym purchase','fortune teller','casino lottery bet','casino lottery win',
+  'casino spin the wheel win money','company employee pay','property upkeep','money receive',
+  'missions complete','crime success','money send','travel fee',
+  'bazaar sell','bazaar buy','points market sell','points market buy','item abroad buy'
+];
+
+function isKnownTitle(title){
+  if(isNoise(title)) return true;
+  if(title.startsWith('trade')) return true;
+  if(KNOWN_HANDLED_TITLES.includes(title)) return true;
+  if(title.includes('item market') && (title.includes('sell') || title.includes('buy'))) return true;
+  if(title.includes('shop') || title.includes('store')) return true;
+  if(title.includes('casino') && title.includes('bet')) return true;
+  return false;
+}
+
+// Strips any previously-saved unmatched entries whose title is now recognized
+// (because a handler or ignore-pattern was added after they were first logged).
+function pruneStaleUnmatched(){
+  const before = persistedUnmatched.length;
+  persistedUnmatched = persistedUnmatched.filter(u => !isKnownTitle((u.title || '').toLowerCase()));
+  if(persistedUnmatched.length !== before){
+    localStorage.setItem('tornUnmatched', JSON.stringify(persistedUnmatched));
+  }
 }
 
 async function getSignupDate(apiKey){
@@ -2120,10 +2155,13 @@ if(cachedBalance) renderBalance(cachedBalance);
 
 render();
 renderCashFlow();
-if(persistedUnmatched.length){
-  const box = document.getElementById('unmatchedBox');
-  if(box) box.innerHTML = `<div style="color:var(--text-dim); font-size:0.7rem; margin-bottom:4px;">${persistedUnmatched.length} unique unmatched entries saved (newest 500 kept)</div>` +
-    persistedUnmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('');
+pruneStaleUnmatched(); // clean out entries that are now recognized, even without a fresh sync
+const unmatchedBox = document.getElementById('unmatchedBox');
+if(unmatchedBox){
+  unmatchedBox.innerHTML = persistedUnmatched.length
+    ? `<div style="color:var(--text-dim); font-size:0.7rem; margin-bottom:4px;">${persistedUnmatched.length} unique unmatched entries saved (newest 500 kept)</div>` +
+      persistedUnmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
+    : 'None. Everything recognized matched a known pattern.';
 }
 setTimeout(() => backgroundResolveNames(), 2000);
 </script>
