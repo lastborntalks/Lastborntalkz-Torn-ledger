@@ -629,18 +629,6 @@
   </div>
 
   <div class="card">
-    <div class="label" style="margin-bottom:8px;">TEACH COUNTRY CODES</div>
-    <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:10px; line-height:1.5;">
-      Torn's log only records foreign travel as a numeric area code, not a country name, and that number isn't reliable to guess. Teach the app what each code means once, and it'll label it correctly from now on and relabel any past ledger entries using that code. Codes marked 🔒 are locked in and can't be changed here.
-    </div>
-    <input type="number" id="areaCode" placeholder="Area code number (e.g. 9)">
-    <input type="text" id="areaName" placeholder="Country name (e.g. China)">
-    <button onclick="saveAreaLabel()">Save Country Label</button>
-    <button class="secondary" onclick="resetAreaCodes()">Clear All Saved Codes</button>
-    <div id="areaListBox" style="font-size:0.75rem; color:var(--text-dim); margin-top:4px; line-height:1.6;">None saved yet.</div>
-  </div>
-
-  <div class="card">
     <div class="label" style="margin-bottom:8px;">DATA TOOLS</div>
     <button class="secondary" onclick="exportLedger()" style="margin-bottom:8px;">Export ledger backup</button>
     <button class="secondary" onclick="document.getElementById('importFileSt').click()" style="margin-bottom:8px;">Import ledger backup</button>
@@ -753,39 +741,8 @@ async function fetchBalance(apiKey){
   }catch(e){ /* silent — balance is a bonus, not critical to the sync */ }
 }
 
-function saveAreaLabel(){
-  const code = document.getElementById('areaCode').value.trim();
-  const name = document.getElementById('areaName').value.trim();
-  if(!code || !name){ alert('Enter both the area number and country name.'); return; }
-  if(typeof HARDCODED_AREAS !== 'undefined' && HARDCODED_AREAS[code]){
-    alert(`Area ${code} is locked in as ${HARDCODED_AREAS[code]} and can't be changed here.`);
-    return;
-  }
-  areaLabels[code] = name;
-  localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
-  document.getElementById('areaCode').value = '';
-  document.getElementById('areaName').value = '';
-  renderAreaList();
-  // retroactively relabel existing rows using this area code
-  ledger.forEach(r => {
-    if(r.areaCode === code){ r.counterparty = name; }
-  });
-  saveLedger();
-}
-
-function resetAreaCodes(){
-  if(!confirm('This clears every area code label you\'ve manually taught (locked codes are unaffected). Continue?')) return;
-  if(typeof HARDCODED_AREAS !== 'undefined'){
-    areaLabels = { ...HARDCODED_AREAS };
-  } else {
-    areaLabels = {};
-  }
-  localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
-  renderAreaList();
-}
-
 // Maps common country names to ISO codes, so flags can be computed automatically
-// for any country the user teaches the app via the area-code field.
+// for whichever country name a hardcoded area code resolves to.
 function fmtMoney(n){
   // Format a number with commas at every 3 digits and 2 decimal places
   const abs = Math.abs(Number(n));
@@ -837,17 +794,6 @@ function flagForCountry(name){
   if(!iso) return '';
   // Converts a 2-letter ISO code into its flag emoji using regional indicator symbols
   return iso.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
-}
-function renderAreaList(){
-  const el = document.getElementById('areaListBox');
-  if(!el) return; // safety check in case this ever renders before Settings has loaded
-  const entries = Object.entries(areaLabels);
-  el.innerHTML = entries.length
-    ? 'Known: ' + entries.map(([c,n]) => {
-        const locked = (typeof HARDCODED_AREAS !== 'undefined' && HARDCODED_AREAS[c]) ? ' 🔒' : '';
-        return `Area ${c} = ${flagForCountry(n)} ${n}${locked}`;
-      }).join(' · ')
-    : 'None saved yet.';
 }
 
 function toggleKeyVisibility(){
@@ -2113,14 +2059,15 @@ setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], 'cfBtnAll');
 setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnAll');
 
 // HARDCODED area codes. These are locked in permanently: they force-apply on
-// every page load and CANNOT be changed or cleared through the Teach Country
-// Codes tool in Settings (saveAreaLabel() below blocks edits to any code in
-// this list). To add more later, just add another 'code': 'Country' line here.
+// every page load and are not editable anywhere in the app. To add more
+// later, just add another 'code': 'Country' line here.
 const HARDCODED_AREAS = {
   '2': 'Mexico',
   '3': 'Hawaii',
   '4': 'South Africa',
+  '5': 'Japan',
   '6': 'China',
+  '7': 'Argentina',
   '8': 'Switzerland',
   '9': 'Canada',
   '10': 'United Kingdom',
@@ -2144,8 +2091,6 @@ localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
   });
   if(changed) localStorage.setItem('tornLedger', JSON.stringify(ledger));
 })();
-
-renderAreaList();
 
 const savedTheme = localStorage.getItem('tornTheme') || 'system';
 applyTheme(savedTheme);
