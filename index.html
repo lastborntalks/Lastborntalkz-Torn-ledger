@@ -366,9 +366,11 @@
     <span style="font-size:0.85rem; color:var(--text); font-weight:600;">☕ Buy me a coffee</span>
     <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Support →</span>
   </a>
-  <div style="border-top:1px solid var(--border); padding-top:8px; font-size:0.78rem; color:var(--text-dim);">
-    Or send Xanax in game to <strong style="color:var(--blue);">Lastborntalkz [4283156]</strong>. Every bit keeps this free.
-  </div>
+  <a href="https://www.torn.com/trade.php#step=start&userID=4283156" target="_blank" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--border); padding-top:8px;">
+    <span style="font-size:0.85rem; color:var(--text); font-weight:600;">💊 Send 1 Xanax, keep it free</span>
+    <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Open trade →</span>
+  </a>
+  <div id="xanaxDonationBox" style="font-size:0.72rem; color:var(--text-dim); margin-top:8px; text-align:center;"></div>
 </div>
 
 <div class="card">
@@ -655,9 +657,39 @@
 </nav>
 
 <script>
+// Torn's item ID for Xanax. Used to detect donation gifts sent in-game.
+const XANAX_ITEM_ID = 206;
+
 let ledger = JSON.parse(localStorage.getItem('tornLedger') || '[]');
 let cashEvents = JSON.parse(localStorage.getItem('tornCashEvents') || '[]');
 let persistedUnmatched = JSON.parse(localStorage.getItem('tornUnmatched') || '[]');
+
+// One-time reclaim: any "Item receive" that's already sitting in the unmatched
+// box because it predates Xanax-donation tracking gets converted into a
+// donation record now, instead of staying stuck as unmatched forever.
+(function reclaimPastXanaxDonations(){
+  let unmatchedChanged = false;
+  let cashChanged = false;
+  persistedUnmatched = persistedUnmatched.filter(u => {
+    if((u.title || '').toLowerCase() !== 'item receive') return true;
+    const items = Array.isArray(u.data?.items) ? u.data.items : [];
+    const xanaxItem = items.find(it => Number(it.id) === XANAX_ITEM_ID);
+    if(!xanaxItem) return true;
+    const uid = 'reclaim-' + u.timestamp + '-' + (u.data.sender || '') + '-' + (xanaxItem.uid ?? xanaxItem.qty);
+    if(!cashEvents.some(e => e.syncId === uid)){
+      cashEvents.push({
+        syncId: uid, date: u.timestamp, ts: Date.parse(u.timestamp) || Date.now(),
+        category: 'xanax_donation', kind: 'neutral',
+        amount: Number(xanaxItem.qty) || 1, senderId: u.data.sender || null
+      });
+      cashChanged = true;
+    }
+    unmatchedChanged = true;
+    return false; // remove from the unmatched list, it's been claimed
+  });
+  if(unmatchedChanged) localStorage.setItem('tornUnmatched', JSON.stringify(persistedUnmatched));
+  if(cashChanged) localStorage.setItem('tornCashEvents', JSON.stringify(cashEvents));
+})();
 
 function saveUnmatched(newEntries){
   // Merge new entries with persisted ones, deduplicate by title+timestamp, keep newest 500
@@ -672,6 +704,7 @@ function saveUnmatched(newEntries){
   pruneStaleUnmatched(); // drop anything that's since become recognized
   localStorage.setItem('tornUnmatched', JSON.stringify(persistedUnmatched));
 }
+
 
 function saveCashEvents(){
   localStorage.setItem('tornCashEvents', JSON.stringify(cashEvents));
@@ -874,6 +907,21 @@ function saveLedger(){
   saveCashEvents();
   render();
   renderCashFlow();
+  renderDonationStats();
+}
+
+// Live count of Xanax gifted by other users, shown next to the donate link
+// as social proof (people give more when they can see others already have).
+function renderDonationStats(){
+  const box = document.getElementById('xanaxDonationBox');
+  if(!box) return;
+  const total = cashEvents.filter(e => e.category === 'xanax_donation').reduce((s,e) => s + e.amount, 0);
+  const donors = new Set(cashEvents.filter(e => e.category === 'xanax_donation' && e.senderId).map(e => e.senderId)).size;
+  if(total <= 0){
+    box.textContent = 'Be the first to send Xanax and keep this free for everyone.';
+  } else {
+    box.textContent = `🙏 ${total} Xanax received so far` + (donors > 0 ? ` from ${donors} player${donors === 1 ? '' : 's'}` : '') + '. Thank you.';
+  }
 }
 
 // Titles that are known noise — never transactions, skip silently, never show as unmatched
@@ -884,9 +932,11 @@ const IGNORE_PATTERNS = [
   'travel depart','travel arrive',
   'gym train','gym activate','item use','attack hospitalize receive','attack lost','attack leave','attack assist',
   'attack failed receive','attack stalemate receive','attack timeout receive',
+  'attack failed','attack stalemate','attack timeout',
+  'early discharge',
   'crime fail','crime success item gain','crime skill level up','crime skill level down','crime critical fail injury','crime critical fail','crime use items',
   'stock buy','stock sell','stock special',
-  'faction loan item send','revive preference','nerve maximum','life maximum','level up','bust receive success','jail',
+  'faction loan item send','faction loan item receive','revive preference','nerve maximum','life maximum','level up','bust receive success','jail',
   'mods equip','mods unequip','city item find','points energy refill use',
   'casino spin the wheel start','casino spin the wheel free spin','casino spin the wheel win property',
   'racket','organized crime','chain','education','medical','mail','hunting',
@@ -1117,6 +1167,22 @@ function ingestLogBatch(logObj, catalog){
         cashEvents.push({ syncId: uid, date, ts, category: 'fortune', kind: 'loss', amount: Number(d.cost) || 0 });
       }
       continue;
+    }
+    if(title === 'item receive'){
+      const items = Array.isArray(d.items) ? d.items : [];
+      const xanaxItem = items.find(it => Number(it.id) === XANAX_ITEM_ID);
+      if(xanaxItem){
+        const uid = 'cash-' + id;
+        if(!cashEvents.some(e => e.syncId === uid)){
+          cashEvents.push({
+            syncId: uid, date, ts, category: 'xanax_donation', kind: 'neutral',
+            amount: Number(xanaxItem.qty) || 1, senderId: d.sender || null
+          });
+        }
+        continue;
+      }
+      // Not Xanax — fall through to the generic unmatched handling below,
+      // same as before. Other gifted items still surface for a manual look.
     }
     if(title === 'casino lottery bet' || title === 'casino lottery win' || title.includes('casino') && title.includes('bet')){
       const uid = 'cash-' + id;
@@ -2100,6 +2166,7 @@ if(cachedBalance) renderBalance(cachedBalance);
 
 render();
 renderCashFlow();
+renderDonationStats();
 pruneStaleUnmatched(); // clean out entries that are now recognized, even without a fresh sync
 const unmatchedBox = document.getElementById('unmatchedBox');
 if(unmatchedBox){
