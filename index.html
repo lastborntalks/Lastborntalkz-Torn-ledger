@@ -283,6 +283,10 @@
   animation-timing-function: ease;
   animation-delay: 2s;
   animation-fill-mode: both;
+  pointer-events:none;
+}
+#donationNotif a{
+  pointer-events:auto;
 }
 </style>
 <div id="resyncNotif">📣 New: Mugging is now net. Money you take from other players now offsets what's taken from you, in Financial Health and Cash Flow.</div>
@@ -2203,4 +2207,4 @@ const unmatchedBox = document.getElementById('unmatchedBox');
 if(unmatchedBox){
   unmatchedBox.innerHTML = persistedUnmatched.length
     ? `<div style="color:var(--text-dim); font-size:0.7rem; margin-bottom:4px;">${persistedUnmatched.length} unique unmatched entries saved (newest 500 kept)</div>` +
-      persistedUnmatched.map(u => `<div style="margin-bottom:6px;">[
+  
