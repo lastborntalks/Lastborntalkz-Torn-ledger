@@ -266,8 +266,30 @@
   animation: slideInNotif 7s ease forwards;
   pointer-events:none;
 }
+@keyframes slideInDonation{
+  0%{ transform:translateX(-110%); opacity:0; }
+  8%{ transform:translateX(0); opacity:1; }
+  92%{ transform:translateX(0); opacity:1; }
+  100%{ transform:translateX(-110%); opacity:0; }
+}
+#donationNotif{
+  position:fixed; top:130px; left:12px; right:12px; z-index:199;
+  background:var(--blue); color:#fff;
+  border-radius:8px; padding:12px 14px;
+  font-size:0.76rem; line-height:1.5; font-family:'Inter',sans-serif; font-weight:600;
+  max-width:290px; box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  animation-name: slideInDonation;
+  animation-duration: 16s;
+  animation-timing-function: ease;
+  animation-delay: 2s;
+  animation-fill-mode: both;
+}
 </style>
-<div id="resyncNotif">📣 App updates shipping fast this week. Wipe &amp; Full Resync (Settings) at least twice a day through this week to stay current.</div>
+<div id="resyncNotif">📣 New: Mugging is now net. Money you take from other players now offsets what's taken from you, in Financial Health and Cash Flow.</div>
+<div id="donationNotif">🙏🙇‍♂️ Hi everyone. I don't usually ask for help, but I need to raise about $22 (₦30,000) over the next few days to fix an important personal document.<br><br>
+I've built and maintained Torn Ledger completely free, with no ads or subscriptions. If it's ever been useful to you and you'd like to support me, even $1 or $2 would genuinely make a difference.<br><br>
+If not, that's completely okay. Thanks for using the tool either way.<br><br>
+Support link: <a href="https://paystack.shop/pay/q28-1oqwqp" target="_blank" style="color:#fff; text-decoration:underline;">https://paystack.shop/pay/q28-1oqwqp</a></div>
 
 <div id="cityBg"></div>
 
@@ -1951,7 +1973,13 @@ function renderFinancialHealth(){
   const gymCost = cashEvents.filter(e => e.category === 'gym').reduce((s,e) => s + e.amount, 0);
   const fortuneCost = cashEvents.filter(e => e.category === 'fortune').reduce((s,e) => s + e.amount, 0);
   const casinoWin = cashEvents.filter(e => e.category === 'casino_win').reduce((s,e) => s + e.amount, 0);
-  const muggingLoss = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
+  const muggingLossRaw = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
+  const muggingGains = cashEvents.filter(e => e.category === 'mugging_others').reduce((s,e) => s + e.amount, 0);
+  // Net mugging result: what you've lost to being mugged, minus what you've
+  // taken from mugging other players. Can go negative, meaning you've come
+  // out ahead overall on mugging, in which case it's treated as income
+  // (reducing total expenses) rather than a loss.
+  const muggingLoss = muggingLossRaw - muggingGains;
   const jobIncome = cashEvents.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
   const missionIncome = cashEvents.filter(e => e.category === 'mission').reduce((s,e) => s + e.amount, 0);
 
@@ -1979,7 +2007,7 @@ function renderFinancialHealth(){
   const tpEl = document.getElementById('fhTradingProfit');
   if(tpEl) tpEl.innerHTML = fmtCompact(Math.abs(tradingProfit));
   const mlEl = document.getElementById('fhMuggingLoss');
-  if(mlEl) mlEl.innerHTML = fmtCompact(Math.abs(muggingLoss));
+  if(mlEl) mlEl.innerHTML = fmtCompact(Math.max(0, muggingLoss));
   set('fhRehabTotal', rehabCost);
   set('fhPropertyTotal', propertyCost);
   set('fhTravelTotal', travelCost);
@@ -1995,7 +2023,7 @@ function renderFinancialHealth(){
   const insights = [];
   if(ledger.length > 0){
     const rehabPct = tradingProfit > 0 ? (rehabCost / tradingProfit * 100) : 0;
-    const muggingPct = tradingProfit > 0 ? (muggingLoss / tradingProfit * 100) : 0;
+    const muggingPct = tradingProfit > 0 ? (Math.max(0, muggingLoss) / tradingProfit * 100) : 0;
     const casinoPct = tradingProfit > 0 ? (casinoCost / tradingProfit * 100) : 0;
 
     if(rehabPct > 5) insights.push(`Rehab has cost you ${rehabPct.toFixed(1)}% of your total trading profit.`);
@@ -2006,7 +2034,8 @@ function renderFinancialHealth(){
     if(fortuneCost > 0) insights.push(`You've spent ${fmtMoney(fortuneCost)} on the fortune teller.`);
     if(casinoWin > casinoCost) insights.push(`You're actually net positive from the casino (+${fmtMoney(casinoWin - casinoCost)}). Rare.`);
     if(casinoWin < casinoCost) insights.push(`You've spent ${fmtMoney(casinoCost - casinoWin)} more at the casino than you've won back.`);
-    if(rehabCost === 0 && muggingLoss === 0) insights.push('No rehab or mugging losses recorded yet. Your synced history may not cover enough history for this to be meaningful.');
+    if(muggingLoss < 0) insights.push(`You've actually come out ahead on mugging overall: ${fmtMoney(Math.abs(muggingLoss))} more taken from other players than taken from you.`);
+    if(rehabCost === 0 && muggingLossRaw === 0 && muggingGains === 0) insights.push('No rehab or mugging activity recorded yet. Your synced history may not cover enough history for this to be meaningful.');
     if(netPosition < 0) insights.push(`Despite ${fmtMoney(tradingProfit)} in trading profit, your net position is negative after factoring in all tracked expenses.`);
     if(jobIncome > 0 && jobIncome < 1000) insights.push(`Your job income (${fmtMoney(jobIncome)}) is minimal compared to trading. Worth noting but not significant.`);
     if(insights.length === 0) insights.push('Your finances look healthy based on what\'s been synced. Keep trading.');
@@ -2024,7 +2053,9 @@ function renderCashFlow(){
 
   const filtered = cashEvents.filter(cashEventMatchesFilter);
   const jobIncome = filtered.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
-  const muggingLoss = filtered.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
+  const muggingLossRaw = filtered.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
+  const muggingGains = filtered.filter(e => e.category === 'mugging_others').reduce((s,e) => s + e.amount, 0);
+  const muggingLoss = Math.max(0, muggingLossRaw - muggingGains);
   const rehabCost = filtered.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
 
   jobEl.textContent = '$' + jobIncome.toLocaleString('en-US', {minimumFractionDigits:2});
@@ -2172,12 +2203,4 @@ const unmatchedBox = document.getElementById('unmatchedBox');
 if(unmatchedBox){
   unmatchedBox.innerHTML = persistedUnmatched.length
     ? `<div style="color:var(--text-dim); font-size:0.7rem; margin-bottom:4px;">${persistedUnmatched.length} unique unmatched entries saved (newest 500 kept)</div>` +
-      persistedUnmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
-    : 'None. Everything recognized matched a known pattern.';
-}
-setTimeout(() => backgroundResolveNames(), 2000);
-</script>
-<script data-goatcounter="https://tornledger.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
-</body>
-</html>
+      persistedUnmatched.map(u => `<div style="margin-bottom:6px;">[
