@@ -1198,7 +1198,33 @@ function ingestLogBatch(logObj, catalog){
     if(title === 'property upkeep'){
       const uid = 'cash-' + id;
       if(!cashEvents.some(e => e.syncId === uid)){
-        cashEvents.push({ syncId: uid, date, ts, category: 'property', kind: 'loss', amount: Number(d.upkeep_paid) || 0 });
+        // Torn's exact field name for this isn't confirmed from documentation,
+        // so this tries every plausible name rather than trusting just one.
+        // If none of them resolve to a real number, this falls through to
+        // unmatched instead of silently logging a $0 expense, so the raw
+        // payload surfaces and can be used to add the correct field name.
+        const amt = Number(d.upkeep_paid ?? d.cost ?? d.amount ?? d.paid ?? d.total ?? 0) || 0;
+        if(amt > 0){
+          cashEvents.push({ syncId: uid, date, ts, category: 'property', kind: 'loss', amount: amt });
+        } else {
+          unmatched.push({title: rawTitle, timestamp: date, data: d});
+        }
+      }
+      continue;
+    }
+    if(title === 'property staff'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        // Confirmed real field from an actual log sample: hiring/keeping staff
+        // (e.g. a Pilot) adds to upkeep via "additional_upkeep". Folded into
+        // the same 'property' category as regular upkeep so it all shows up
+        // together in Financial Health and Cash Flow.
+        const amt = Number(d.additional_upkeep) || 0;
+        if(amt > 0){
+          cashEvents.push({ syncId: uid, date, ts, category: 'property', kind: 'loss', amount: amt });
+        } else {
+          unmatched.push({title: rawTitle, timestamp: date, data: d});
+        }
       }
       continue;
     }
