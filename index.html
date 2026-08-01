@@ -895,7 +895,13 @@ function saveLedger(){
 // Rough total user count, pulled from your own analytics (e.g. GoatCounter).
 // Update this by hand every so often as the user base grows, it's a manual
 // number on purpose since there's no server here to track it automatically.
-const ESTIMATED_USER_COUNT = 150;
+const ESTIMATED_USER_COUNT = 273;
+
+// Real-money "buy me a coffee" donations (via Paystack) happen completely
+// off-platform, there's no API tying that payment back into this app, so
+// this has to be a manually updated number too. Update it by hand whenever
+// you check your Paystack dashboard.
+const MANUAL_CASH_DONATIONS_USD = 4;
 
 // Live count of Xanax gifted by other users, shown next to the donate link
 // as social proof (people give more when they can see how few others have,
@@ -905,11 +911,12 @@ function renderDonationStats(){
   if(!box) return;
   const total = cashEvents.filter(e => e.category === 'xanax_donation').reduce((s,e) => s + e.amount, 0);
   const donors = new Set(cashEvents.filter(e => e.category === 'xanax_donation' && e.senderId).map(e => e.senderId)).size;
+  const cashNote = MANUAL_CASH_DONATIONS_USD > 0 ? ` plus $${MANUAL_CASH_DONATIONS_USD}+ in coffee donations` : '';
   if(total <= 0){
-    box.textContent = `Over ${ESTIMATED_USER_COUNT} people use Torn Ledger. Be the first to send Xanax and keep it free.`;
+    box.textContent = `Over ${ESTIMATED_USER_COUNT} people use Torn Ledger${cashNote}. Be the first to send Xanax and keep it free.`;
   } else {
     box.textContent = `🙏 ${total} Xanax received` + (donors > 0 ? ` from ${donors} player${donors === 1 ? '' : 's'}` : '') +
-      ` out of ${ESTIMATED_USER_COUNT}+ people using this. If it's helped you, be the next.`;
+      `${cashNote}, out of ${ESTIMATED_USER_COUNT}+ people using this. If it's helped you, be the next.`;
   }
 }
 
@@ -2195,13 +2202,4 @@ pruneStaleUnmatched(); // clean out entries that are now recognized, even withou
 const unmatchedBox = document.getElementById('unmatchedBox');
 if(unmatchedBox){
   unmatchedBox.innerHTML = persistedUnmatched.length
-    ? `<div style="color:var(--text-dim); font-size:0.7rem; margin-bottom:4px;">${persistedUnmatched.length} unique unmatched entries saved (newest 500 kept)</div>` +
-      persistedUnmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
-    : 'None. Everything recognized matched a known pattern.';
-}
-setTimeout(() => backgroundResolveNames(), 2000);
-</script>
-<script data-goatcounter="https://tornledger.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
-</body>
-</html>
+    ? `<div style="color:var(--text-dim); font-size:0.7rem; margin-bottom:4px;">${persistedUnmatched.length} unique unmatched entries saved (newest 500 ke
