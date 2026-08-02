@@ -247,6 +247,54 @@
   </div>
 </div>
 
+<style>
+#fundraiserOverlay{
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 250;
+  padding: 16px;
+  overflow-y: auto;
+}
+#fundraiserOverlay.open{ display: block; }
+#fundraiserPanel{
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  max-width: 420px;
+  margin: 60px auto;
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+#fundraiserPanel p{ margin: 0 0 10px 0; }
+#fundraiserPanel .fr-support-btn{
+  display: block;
+  text-align: center;
+  background: var(--blue);
+  color: #fff;
+  padding: 11px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-decoration: none;
+  margin-bottom: 8px;
+}
+</style>
+<div id="fundraiserOverlay">
+  <div id="fundraiserPanel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <strong style="color:var(--blue); font-size:1rem;">A quick personal ask</strong>
+      <button class="small secondary" onclick="closeFundraiser()">Close</button>
+    </div>
+    <p>One week left. I need to raise $22 (₦30,000) to complete an important correction on my college documents before the deadline.</p>
+    <p>Torn Ledger has always been free, with no ads or subscriptions. If it's helped you, and you'd like to support me, even $1 to $2 would mean a lot.</p>
+    <a href="https://paystack.shop/pay/q28-1oqwqp" target="_blank" class="fr-support-btn">Support →</a>
+    <p style="color:var(--text-dim); font-size:0.78rem; margin-bottom:0;">Thank you either way.</p>
+  </div>
+</div>
+
 </head>
 <body>
 
@@ -723,6 +771,13 @@ const THEME_ICONS = { light: '☀️', dark: '🌙' };
 function toggleHelp(){
   const overlay = document.getElementById('helpOverlay');
   if(overlay) overlay.classList.toggle('open');
+}
+
+function closeFundraiser(){
+  const overlay = document.getElementById('fundraiserOverlay');
+  if(overlay) overlay.classList.remove('open');
+  // Once dismissed, don't show again until a new calendar day
+  localStorage.setItem('tornFundraiserSeenDate', new Date().toISOString().slice(0,10));
 }
 
 function applyTheme(pref){
@@ -2207,8 +2262,21 @@ if(unmatchedBox){
     : 'None. Everything recognized matched a known pattern.';
 }
 setTimeout(() => backgroundResolveNames(), 2000);
+
+// Fundraiser popup: shown at most once per calendar day, fully isolated from
+// everything else above so it can't interfere with sync, rendering, or the
+// resync reminder banner. Wrapped in try/catch so even if this ever fails,
+// it can never break the rest of the app.
+try{
+  const todayForFundraiser = new Date().toISOString().slice(0,10);
+  const fundraiserLastSeen = localStorage.getItem('tornFundraiserSeenDate');
+  if(fundraiserLastSeen !== todayForFundraiser){
+    const fundraiserOverlay = document.getElementById('fundraiserOverlay');
+    if(fundraiserOverlay) fundraiserOverlay.classList.add('open');
+  }
+}catch(e){ /* never let this block the rest of the app */ }
 </script>
 <script data-goatcounter="https://tornledger.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
-</html>
+  </html>
