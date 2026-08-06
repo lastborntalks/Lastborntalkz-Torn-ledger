@@ -290,7 +290,8 @@
     </div>
     <p>One week left. I need to raise $22 (₦30,000) to complete an important correction on my college documents before the deadline.</p>
     <p>Torn Ledger has always been free, with no ads or subscriptions. If it's helped you, and you'd like to support me, even $1 to $2 would mean a lot.</p>
-    <a href="https://paystack.shop/pay/q28-1oqwqp" target="_blank" class="fr-support-btn">Support →</a>
+    <p>Some of you tried to send support before and it didn't go through, that was Paystack blocking international payments. It's fixed now: tap below and I'll send you the details directly on WhatsApp.</p>
+    <a href="#" id="fundraiserSupportLink" target="_blank" class="fr-support-btn">Message me on WhatsApp →</a>
     <p style="color:var(--text-dim); font-size:0.78rem; margin-bottom:0;">Thank you either way.</p>
   </div>
 </div>
@@ -298,6 +299,78 @@
 </head>
 <body>
 
+<style>
+/* Splash screen: pure CSS animation (not dependent on JS finishing) so it
+   always fades out on its own even if something else on the page errors. */
+@keyframes splashFade{
+  0%{ opacity: 1; }
+  93%{ opacity: 1; }
+  100%{ opacity: 0; visibility: hidden; }
+}
+#splashScreen{
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: splashFade 4.3s ease forwards;
+  pointer-events: none;
+}
+#splashScreen .splash-logo{
+  font-family: 'Barlow', 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 2.1rem;
+  letter-spacing: 0.08em;
+  color: var(--blue);
+  margin-bottom: 6px;
+}
+#splashScreen .splash-sub{
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+#updateNoticeOverlay{
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 260;
+  padding: 16px;
+  overflow-y: auto;
+}
+#updateNoticeOverlay.open{ display: block; }
+#updateNoticePanel{
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  max-width: 400px;
+  margin: 60px auto;
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+#updateNoticePanel p{ margin: 0 0 10px 0; }
+#updateNoticePanel p:last-child{ margin-bottom: 0; }
+</style>
+<div id="splashScreen">
+  <div class="splash-logo">TORN LEDGER</div>
+  <div class="splash-sub">Loading your ledger...</div>
+</div>
+<div id="updateNoticeOverlay">
+  <div id="updateNoticePanel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <strong style="color:var(--blue); font-size:1rem;">What's new</strong>
+      <button class="small secondary" onclick="closeUpdateNotice()">Close</button>
+    </div>
+    <p>Support now works via WhatsApp for everyone, including international payments that were failing through Paystack before.</p>
+    <p>Updates are shipping fast this week. Please wipe &amp; resync (Settings) at least twice a day through the rest of this week to stay current.</p>
+  </div>
+</div>
 
 <div id="cityBg"></div>
 
@@ -392,10 +465,13 @@
   #donateCard{ animation: donateGlow 3s ease-in-out infinite; }
 </style>
 <div class="card" id="donateCard" style="padding:12px 14px; margin-bottom:16px;">
-  <a href="https://paystack.shop/pay/q28-1oqwqp" target="_blank" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-    <span style="font-size:0.85rem; color:var(--text); font-weight:600;">☕ Buy me a coffee</span>
-    <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Support →</span>
+  <a href="#" id="coffeeSupportLink" target="_blank" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+    <span style="font-size:0.85rem; color:var(--text); font-weight:600;">💬 Support via WhatsApp</span>
+    <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Message →</span>
   </a>
+  <div style="font-size:0.7rem; color:var(--text-dim); margin-bottom:10px; line-height:1.4;">
+    Some of you tried to send support before and it didn't go through, that was Paystack blocking international payments. It's fixed now: tap above and I'll send you the details directly.
+  </div>
   <a href="https://www.torn.com/trade.php#step=start&userID=4283156" target="_blank" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--border); padding-top:8px;">
     <span style="font-size:0.85rem; color:var(--text); font-weight:600;">💊 Send 1 Xanax, keep it free</span>
     <span style="font-size:0.8rem; color:var(--blue); font-weight:700;">Open trade →</span>
@@ -619,6 +695,10 @@
       <span style="color:var(--text-dim);">Fortune teller</span>
       <span id="fhFortuneTotal" style="font-weight:600;">$0</span>
     </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px solid var(--border);">
+      <span style="color:var(--text-dim);">Property rental extensions</span>
+      <span id="fhPropertyRentTotal" style="font-weight:600;">$0</span>
+    </div>
     <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;">
       <span style="color:var(--text-dim); font-weight:700;">Total expenses</span>
       <span id="fhTotalExpenses" class="profit-neg" style="font-weight:700;">$0</span>
@@ -778,6 +858,16 @@ function closeFundraiser(){
   if(overlay) overlay.classList.remove('open');
   // Once dismissed, don't show again until a new calendar day
   localStorage.setItem('tornFundraiserSeenDate', new Date().toISOString().slice(0,10));
+}
+
+function closeUpdateNotice(){
+  const overlay = document.getElementById('updateNoticeOverlay');
+  if(overlay) overlay.classList.remove('open');
+  // Once dismissed, don't show again until a new calendar day
+  localStorage.setItem('tornUpdateNoticeSeenDate', new Date().toISOString().slice(0,10));
+  // Only after this one is closed do we check the fundraiser ask, so the two
+  // popups queue one after another instead of ever stacking on top of each other.
+  try{ maybeShowFundraiser(); }catch(e){ /* never let this block the rest of the app */ }
 }
 
 function applyTheme(pref){
@@ -985,7 +1075,7 @@ const IGNORE_PATTERNS = [
   'attack failed receive','attack stalemate receive','attack timeout receive',
   'attack failed','attack stalemate','attack timeout',
   'early discharge',
-  'crime fail','crime success item gain','crime skill level up','crime skill level down','crime critical fail injury','crime critical fail','crime use items',
+  'crime fail','crime success item gain','crime success ammo gain','crime success skimming collect card details','crime item retrieve','crime skill level up','crime skill level down','crime critical fail injury','crime critical fail','crime use items',
   'stock buy','stock sell','stock special',
   'faction loan item send','faction loan item receive','revive preference','nerve maximum','life maximum','level up','bust receive success','jail',
   'mods equip','mods unequip','city item find','points energy refill use',
@@ -997,7 +1087,9 @@ const IGNORE_PATTERNS = [
   'forums','message ','faction newsletter','faction money balance change','tell your story',
   'racing join custom race','racing create custom race','company train receive',
   'revive receive','revive send','stock special passive active','loan decrease',
-  'company special gain','faction application','faction kick receive','missions accept','faction loan item retrieve receive'
+  'company special gain','faction application','faction kick receive','missions accept','faction loan item retrieve receive',
+  'faction member position auto change receive','friends list add','company rank change receive',
+  'property rental market extension accept renter'
 ];
 
 function isNoise(title){
@@ -1011,9 +1103,10 @@ function isNoise(title){
 // instead of sitting there until a full Wipe & Resync.
 const KNOWN_HANDLED_TITLES = [
   'job pay','attack mug receive','attack mug','crime success money gain (new)',
+  'crime success skimming sell card details','offshore bank deposit',
   'faction deposit money','faction payout money balance receive','faction give money receive',
   'rehab','gym purchase','fortune teller','casino lottery bet','casino lottery win',
-  'casino spin the wheel win money','company employee pay','property upkeep','money receive',
+  'casino spin the wheel win money','company employee pay','money receive',
   'missions complete','crime success','money send','travel fee',
   'bazaar sell','bazaar buy','points market sell','points market buy','item abroad buy'
 ];
@@ -1167,6 +1260,13 @@ function ingestLogBatch(logObj, catalog){
       }
       continue;
     }
+    if(title === 'crime success skimming sell card details'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        cashEvents.push({ syncId: uid, date, ts, category: 'crime', kind: 'gain', amount: Number(d.money_gained) || 0 });
+      }
+      continue;
+    }
     if(title === 'faction deposit money'){
       const uid = 'cash-' + id;
       if(!cashEvents.some(e => e.syncId === uid)){
@@ -1174,6 +1274,16 @@ function ingestLogBatch(logObj, catalog){
         // it's your own money moving into faction storage. Withdrawal tracking (the
         // actual net gain/loss) needs one more real example before it can be built.
         cashEvents.push({ syncId: uid, date, ts, category: 'faction_deposit', kind: 'neutral', amount: Number(d.money_deposited) || 0 });
+      }
+      continue;
+    }
+    if(title === 'offshore bank deposit'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        // Same logic as a faction deposit — this is your own money moving into
+        // your offshore bank, not a gain or a loss, so it's tracked for
+        // visibility only and doesn't touch the profit/loss math.
+        cashEvents.push({ syncId: uid, date, ts, category: 'offshore_deposit', kind: 'neutral', amount: Number(d.deposited) || 0 });
       }
       continue;
     }
@@ -1285,6 +1395,23 @@ function ingestLogBatch(logObj, catalog){
         const amt = Number(d.additional_upkeep) || 0;
         if(amt > 0){
           cashEvents.push({ syncId: uid, date, ts, category: 'property', kind: 'loss', amount: amt });
+        } else {
+          unmatched.push({title: rawTitle, timestamp: date, data: d});
+        }
+      }
+      continue;
+    }
+    if(title === 'property rental market extension renter'){
+      const uid = 'cash-' + id;
+      if(!cashEvents.some(e => e.syncId === uid)){
+        // Rent paid to extend a rented property (you're the renter, not the
+        // owner). Kept as its own category, separate from upkeep on property
+        // you own, since it's a different kind of cost. The related "...accept
+        // renter" title is treated as the confirmation step only (ignored as
+        // noise) to avoid double-counting the same charge twice.
+        const amt = Number(d.rent) || 0;
+        if(amt > 0){
+          cashEvents.push({ syncId: uid, date, ts, category: 'property_rent', kind: 'loss', amount: amt });
         } else {
           unmatched.push({title: rawTitle, timestamp: date, data: d});
         }
@@ -2028,6 +2155,7 @@ function renderFinancialHealth(){
   const casinoCost = cashEvents.filter(e => e.category === 'casino').reduce((s,e) => s + e.amount, 0);
   const gymCost = cashEvents.filter(e => e.category === 'gym').reduce((s,e) => s + e.amount, 0);
   const fortuneCost = cashEvents.filter(e => e.category === 'fortune').reduce((s,e) => s + e.amount, 0);
+  const propertyRentCost = cashEvents.filter(e => e.category === 'property_rent').reduce((s,e) => s + e.amount, 0);
   const casinoWin = cashEvents.filter(e => e.category === 'casino_win').reduce((s,e) => s + e.amount, 0);
   const muggingLossRaw = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
   const muggingGains = cashEvents.filter(e => e.category === 'mugging_others').reduce((s,e) => s + e.amount, 0);
@@ -2045,7 +2173,7 @@ function renderFinancialHealth(){
   // that were explicitly captured during ingest as the authoritative source.
   const travelCost = cashEvents.filter(e => e.category === 'travel_fee').reduce((s,e) => s + e.amount, 0);
 
-  const totalExpenses = rehabCost + casinoCost + travelCost + propertyCost + muggingLoss + gymCost + fortuneCost;
+  const totalExpenses = rehabCost + casinoCost + travelCost + propertyCost + muggingLoss + gymCost + fortuneCost + propertyRentCost;
   const netPosition = tradingProfit + jobIncome + missionIncome + casinoWin - totalExpenses;
 
   const set = (id, val, sign = false) => {
@@ -2070,6 +2198,7 @@ function renderFinancialHealth(){
   set('fhCasinoTotal', casinoCost);
   set('fhGymTotal', gymCost);
   set('fhFortuneTotal', fortuneCost);
+  set('fhPropertyRentTotal', propertyRentCost);
   set('fhTotalExpenses', totalExpenses);
   set('fhJobIncome', jobIncome);
   set('fhMissionIncome', missionIncome);
@@ -2088,6 +2217,7 @@ function renderFinancialHealth(){
     if(casinoPct > 5) insights.push(`Casino spending has consumed ${casinoPct.toFixed(1)}% of your trading profit.`);
     if(gymCost > 0) insights.push(`You've spent ${fmtMoney(gymCost)} on gym memberships.`);
     if(fortuneCost > 0) insights.push(`You've spent ${fmtMoney(fortuneCost)} on the fortune teller.`);
+    if(propertyRentCost > 0) insights.push(`You've paid ${fmtMoney(propertyRentCost)} in property rental extensions.`);
     if(casinoWin > casinoCost) insights.push(`You're actually net positive from the casino (+${fmtMoney(casinoWin - casinoCost)}). Rare.`);
     if(casinoWin < casinoCost) insights.push(`You've spent ${fmtMoney(casinoCost - casinoWin)} more at the casino than you've won back.`);
     if(muggingLoss < 0) insights.push(`You've actually come out ahead on mugging overall: ${fmtMoney(Math.abs(muggingLoss))} more taken from other players than taken from you.`);
@@ -2264,20 +2394,60 @@ if(unmatchedBox){
 }
 setTimeout(() => backgroundResolveNames(), 2000);
 
-// Fundraiser popup: shown at most once per calendar day, fully isolated from
-// everything else above so it can't interfere with sync, rendering, or the
-// resync reminder banner. Wrapped in try/catch so even if this ever fails,
-// it can never break the rest of the app.
+// Popups: shown at most once per calendar day each, and only after the splash
+// screen has finished (so nothing pops up while it's still covering the
+// screen). The update notice is checked first; only once it's closed (or was
+// already seen today) does the fundraiser ask get checked, so the two never
+// stack on top of each other. Every piece wrapped in try/catch so a failure
+// here can never break the rest of the app.
+function maybeShowFundraiser(){
+  try{
+    const today = new Date().toISOString().slice(0,10);
+    const lastSeen = localStorage.getItem('tornFundraiserSeenDate');
+    if(lastSeen !== today){
+      const overlay = document.getElementById('fundraiserOverlay');
+      if(overlay) overlay.classList.add('open');
+    }
+  }catch(e){ /* never let this block the rest of the app */ }
+}
+
+function maybeShowUpdateNotice(){
+  try{
+    const today = new Date().toISOString().slice(0,10);
+    const lastSeen = localStorage.getItem('tornUpdateNoticeSeenDate');
+    if(lastSeen !== today){
+      const overlay = document.getElementById('updateNoticeOverlay');
+      if(overlay) overlay.classList.add('open');
+    } else {
+      // Already seen today, skip straight to checking the fundraiser
+      maybeShowFundraiser();
+    }
+  }catch(e){ /* never let this block the rest of the app */ }
+}
+
+// 4300ms matches the splash screen's total on-screen time (4s hold + fade),
+// so this only fires once the splash has fully cleared.
+setTimeout(maybeShowUpdateNotice, 4300);
+
+// WhatsApp support links. Built with encodeURIComponent rather than hand-typed
+// URL encoding, and wrapped in try/catch, so a bad character or a missing
+// element can never break the rest of the app.
 try{
-  const todayForFundraiser = new Date().toISOString().slice(0,10);
-  const fundraiserLastSeen = localStorage.getItem('tornFundraiserSeenDate');
-  if(fundraiserLastSeen !== todayForFundraiser){
-    const fundraiserOverlay = document.getElementById('fundraiserOverlay');
-    if(fundraiserOverlay) fundraiserOverlay.classList.add('open');
+  const WHATSAPP_NUMBER = '2349132449484';
+  function buildWhatsAppLink(message){
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
   }
+
+  const coffeeMsg = "Hi Chisom! I saw your message on Torn Ledger, I really like your work and what you've built with the site. I'd like to support you, could you send me your payment details?";
+  const coffeeLink = document.getElementById('coffeeSupportLink');
+  if(coffeeLink) coffeeLink.href = buildWhatsAppLink(coffeeMsg);
+
+  const fundraiserMsg = "Hi Chisom! I saw your message about needing help with your college documents before the deadline. I'd like to support you, could you send me your payment details?";
+  const fundraiserLink = document.getElementById('fundraiserSupportLink');
+  if(fundraiserLink) fundraiserLink.href = buildWhatsAppLink(fundraiserMsg);
 }catch(e){ /* never let this block the rest of the app */ }
 </script>
 <script data-goatcounter="https://tornledger.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
-  </html>
+</html>
