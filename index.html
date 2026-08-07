@@ -1046,11 +1046,13 @@ const ESTIMATED_USER_COUNT = 273;
 // off-platform, there's no API tying that payment back into this app, so
 // this has to be a manually updated number too. Update it by hand whenever
 // you check your Paystack dashboard.
-const MANUAL_CASH_DONATIONS_USD = 4;
+const MANUAL_CASH_DONATIONS_USD = 9;
 
-// Live count of Xanax gifted by other users, shown next to the donate link
-// as social proof (people give more when they can see how few others have,
-// not just that some vague number already did).
+// Live count of Xanax gifted, detected automatically from synced log data
+// (any "Item receive" matching Xanax's item ID, no need to know the sender's
+// name). NOTE: this is only accurate when it's your own account synced in
+// this browser, since that's the only account whose log naturally contains
+// every Xanax anyone's sent you. Kept this way by explicit choice.
 function renderDonationStats(){
   const box = document.getElementById('xanaxDonationBox');
   if(!box) return;
@@ -2159,11 +2161,12 @@ function renderFinancialHealth(){
   const casinoWin = cashEvents.filter(e => e.category === 'casino_win').reduce((s,e) => s + e.amount, 0);
   const muggingLossRaw = cashEvents.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
   const muggingGains = cashEvents.filter(e => e.category === 'mugging_others').reduce((s,e) => s + e.amount, 0);
+  const crimeIncome = cashEvents.filter(e => e.category === 'crime').reduce((s,e) => s + e.amount, 0);
   // Net mugging result: what you've lost to being mugged, minus what you've
-  // taken from mugging other players. Can go negative, meaning you've come
-  // out ahead overall on mugging, in which case it's treated as income
-  // (reducing total expenses) rather than a loss.
-  const muggingLoss = muggingLossRaw - muggingGains;
+  // taken from mugging other players, minus money made from crimes. Can go
+  // negative, meaning you've come out ahead overall, in which case it's
+  // treated as income (reducing total expenses) rather than a loss.
+  const muggingLoss = muggingLossRaw - muggingGains - crimeIncome;
   const jobIncome = cashEvents.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
   const missionIncome = cashEvents.filter(e => e.category === 'mission').reduce((s,e) => s + e.amount, 0);
 
@@ -2220,8 +2223,8 @@ function renderFinancialHealth(){
     if(propertyRentCost > 0) insights.push(`You've paid ${fmtMoney(propertyRentCost)} in property rental extensions.`);
     if(casinoWin > casinoCost) insights.push(`You're actually net positive from the casino (+${fmtMoney(casinoWin - casinoCost)}). Rare.`);
     if(casinoWin < casinoCost) insights.push(`You've spent ${fmtMoney(casinoCost - casinoWin)} more at the casino than you've won back.`);
-    if(muggingLoss < 0) insights.push(`You've actually come out ahead on mugging overall: ${fmtMoney(Math.abs(muggingLoss))} more taken from other players than taken from you.`);
-    if(rehabCost === 0 && muggingLossRaw === 0 && muggingGains === 0) insights.push('No rehab or mugging activity recorded yet. Your synced history may not cover enough history for this to be meaningful.');
+    if(muggingLoss < 0) insights.push(`You've actually come out ahead overall: ${fmtMoney(Math.abs(muggingLoss))} more from mugging other players and crime income than you've lost to being mugged.`);
+    if(rehabCost === 0 && muggingLossRaw === 0 && muggingGains === 0 && crimeIncome === 0) insights.push('No rehab, mugging, or crime activity recorded yet. Your synced history may not cover enough history for this to be meaningful.');
     if(netPosition < 0) insights.push(`Despite ${fmtMoney(tradingProfit)} in trading profit, your net position is negative after factoring in all tracked expenses.`);
     if(jobIncome > 0 && jobIncome < 1000) insights.push(`Your job income (${fmtMoney(jobIncome)}) is minimal compared to trading. Worth noting but not significant.`);
     if(insights.length === 0) insights.push('Your finances look healthy based on what\'s been synced. Keep trading.');
@@ -2241,7 +2244,8 @@ function renderCashFlow(){
   const jobIncome = filtered.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
   const muggingLossRaw = filtered.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
   const muggingGains = filtered.filter(e => e.category === 'mugging_others').reduce((s,e) => s + e.amount, 0);
-  const muggingLoss = Math.max(0, muggingLossRaw - muggingGains);
+  const crimeIncomeCF = filtered.filter(e => e.category === 'crime').reduce((s,e) => s + e.amount, 0);
+  const muggingLoss = Math.max(0, muggingLossRaw - muggingGains - crimeIncomeCF);
   const rehabCost = filtered.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
 
   jobEl.textContent = '$' + jobIncome.toLocaleString('en-US', {minimumFractionDigits:2});
@@ -2450,4 +2454,4 @@ try{
 <script data-goatcounter="https://tornledger.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
-</html>
+  </html>
