@@ -12,6 +12,7 @@
     --bg-2: rgba(22,22,28,0.90);
     --blue: #4d8dff;
     --blue-dim: #2c4f99;
+    --blue-glow: rgba(77,141,255,0.35);
     --red: #ff4d67;
     --red-dim: #99303f;
     --green: #33d97a;
@@ -26,6 +27,7 @@
     --bg-2: rgba(255,255,255,0.90);
     --blue: #1256e0;
     --blue-dim: #a9c1f5;
+    --blue-glow: rgba(18,86,224,0.30);
     --red: #d61f3c;
     --red-dim: #f0aeb8;
     --green: #157a3d;
@@ -34,6 +36,24 @@
     --text-dim: #55555f;
     --border: #e2e2e8;
     --input-bg: #ffffff;
+  }
+  /* Halloween theme: pumpkin-orange accents on a deep purple-black base.
+     Swapping --blue here reskins every button, link, active tab, and focus
+     outline in the app automatically, since they all already reference it. */
+  [data-theme="halloween"]{
+    --bg: #140a1f;
+    --bg-2: rgba(32,14,46,0.92);
+    --blue: #ff8c1a;
+    --blue-dim: #7a3f10;
+    --blue-glow: rgba(255,140,26,0.45);
+    --red: #ff3b4e;
+    --red-dim: #8a1f2b;
+    --green: #39ff6a;
+    --green-dim: #1a8a3a;
+    --text: #f3ece0;
+    --text-dim: #a394b5;
+    --border: #3a2a4d;
+    --input-bg: #1d1228;
   }
   * { box-sizing: border-box; }
   body{
@@ -57,6 +77,11 @@
   }
   [data-theme="dark"] #cityBg{ background-image: url('images/file_00000000bd8471f488eee3779440d17f.png'); opacity: 0.28; }
   [data-theme="light"] #cityBg{ background-image: url('images/file_00000000caa071f4b6941bd4737652b7.png'); opacity: 0.20; }
+  [data-theme="halloween"] #cityBg{
+    background-image: url('images/file_00000000bd8471f488eee3779440d17f.png');
+    opacity: 0.30;
+    filter: sepia(0.4) hue-rotate(230deg) saturate(1.7) brightness(0.85);
+  }
   h1{
     font-family: 'Barlow', 'Inter', sans-serif;
     font-size: 2rem;
@@ -207,6 +232,18 @@
   #helpPanel h3:first-child{ margin-top: 0; }
   #helpPanel p{ margin: 0 0 8px 0; color: var(--text-dim); }
   #helpPanel .warn{ color: var(--red); font-weight: 600; }
+  .halloween-badge{ display:none; }
+  [data-theme="halloween"] .halloween-badge{ display:inline; }
+  .halloween-decor{
+    display:none;
+    position:fixed;
+    top:10px; left:10px;
+    font-size:1.5rem;
+    opacity:0.55;
+    pointer-events:none;
+    z-index:95;
+  }
+  [data-theme="halloween"] .halloween-decor{ display:block; }
 </style>
 <div id="helpOverlay">
   <div id="helpPanel">
@@ -291,6 +328,7 @@
 </div>
 
 <div id="cityBg"></div>
+<div class="halloween-decor" aria-hidden="true">🕸️</div>
 
 <div style="position:fixed; top:14px; right:14px; z-index:101;">
   <button id="helpToggle" onclick="toggleHelp()" title="Help">?</button>
@@ -372,13 +410,13 @@
 <!-- ═══ LEDGER PAGE ═══ -->
 <div id="page-ledger" class="page active">
 
-<h1>TORN LEDGER</h1>
+<h1>TORN LEDGER <span class="halloween-badge">🎃</span></h1>
 <div class="sub">Lastborn Creative, trading tracker</div>
 
 <style>
   @keyframes donateGlow {
-    0%, 100% { box-shadow: 0 0 0px rgba(77,141,255,0); }
-    50% { box-shadow: 0 0 14px rgba(77,141,255,0.35); }
+    0%, 100% { box-shadow: 0 0 0px rgba(0,0,0,0); }
+    50% { box-shadow: 0 0 14px var(--blue-glow); }
   }
   #donateCard{ animation: donateGlow 3s ease-in-out infinite; }
 </style>
@@ -659,6 +697,7 @@
     <div class="row-buttons">
       <button class="small secondary qf-btn" id="settingsDark" onclick="applyTheme('dark')" style="flex:1;">🌙 Dark</button>
       <button class="small secondary qf-btn" id="settingsLight" onclick="applyTheme('light')" style="flex:1;">☀️ Light</button>
+      <button class="small secondary qf-btn" id="settingsHalloween" onclick="applyTheme('halloween')" style="flex:1;">🎃 Spooky</button>
     </div>
   </div>
 
@@ -776,13 +815,15 @@ function toggleHelp(){
 }
 
 function applyTheme(pref){
-  const effective = (pref === 'light') ? 'light' : 'dark';
+  const effective = (pref === 'light' || pref === 'halloween') ? pref : 'dark';
   localStorage.setItem('tornTheme', effective);
   document.documentElement.setAttribute('data-theme', effective);
   const dark = document.getElementById('settingsDark');
   const light = document.getElementById('settingsLight');
+  const halloween = document.getElementById('settingsHalloween');
   if(dark) dark.classList.toggle('qf-active', effective === 'dark');
   if(light) light.classList.toggle('qf-active', effective === 'light');
+  if(halloween) halloween.classList.toggle('qf-active', effective === 'halloween');
 }
 
 function cycleTheme(){
@@ -2074,8 +2115,10 @@ function switchTab(tab){
     const cur = localStorage.getItem('tornTheme') || 'dark';
     const dark = document.getElementById('settingsDark');
     const light = document.getElementById('settingsLight');
+    const halloween = document.getElementById('settingsHalloween');
     if(dark) dark.classList.toggle('qf-active', cur === 'dark');
     if(light) light.classList.toggle('qf-active', cur === 'light');
+    if(halloween) halloween.classList.toggle('qf-active', cur === 'halloween');
   }
   if(tab === 'health') renderFinancialHealth();
 }
@@ -2159,206 +2202,4 @@ function renderFinancialHealth(){
     if(muggingPct > 10) insights.push(`You've lost ${muggingPct.toFixed(1)}% of your trading profit to mugging. That's your biggest uncontrolled expense.`);
     if(casinoPct > 5) insights.push(`Casino spending has consumed ${casinoPct.toFixed(1)}% of your trading profit.`);
     if(gymCost > 0) insights.push(`You've spent ${fmtMoney(gymCost)} on gym memberships.`);
-    if(fortuneCost > 0) insights.push(`You've spent ${fmtMoney(fortuneCost)} on the fortune teller.`);
-    if(propertyRentCost > 0) insights.push(`You've paid ${fmtMoney(propertyRentCost)} in property rental extensions.`);
-    if(ammoCost > 0) insights.push(`You've spent ${fmtMoney(ammoCost)} more on ammo than you've made selling it back.`);
-    if(ammoCost < 0) insights.push(`You've actually made ${fmtMoney(Math.abs(ammoCost))} net from ammo, selling more than you've bought.`);
-    if(casinoWin > casinoCost) insights.push(`You're actually net positive from the casino (+${fmtMoney(casinoWin - casinoCost)}). Rare.`);
-    if(casinoWin < casinoCost) insights.push(`You've spent ${fmtMoney(casinoCost - casinoWin)} more at the casino than you've won back.`);
-    if(muggingLoss < 0) insights.push(`You've actually come out ahead overall: ${fmtMoney(Math.abs(muggingLoss))} more from mugging other players, crime, and salary than you've lost to being mugged.`);
-    if(rehabCost === 0 && muggingLossRaw === 0 && muggingGains === 0 && crimeIncome === 0 && jobIncome === 0) insights.push('No rehab, mugging, crime, or job activity recorded yet. Your synced history may not cover enough history for this to be meaningful.');
-    if(netPosition < 0) insights.push(`Despite ${fmtMoney(tradingProfit)} in trading profit, your net position is negative after factoring in all tracked expenses.`);
-    if(jobIncome > 0 && jobIncome < 1000) insights.push(`Your job income (${fmtMoney(jobIncome)}) is minimal compared to trading. Worth noting but not significant.`);
-    if(insights.length === 0) insights.push('Your finances look healthy based on what\'s been synced. Keep trading.');
-  } else {
-    insights.push('No data yet. Sync your ledger first.');
-  }
-
-  const insightsEl = document.getElementById('fhInsights');
-  if(insightsEl) insightsEl.innerHTML = insights.map((i, idx) => `<div style="padding:6px 0; border-bottom:1px solid var(--border); display:flex; gap:8px;"><span style="color:var(--blue); font-weight:700; min-width:18px;">${idx+1}.</span><span>${i}</span></div>`).join('');
-}
-
-function renderCashFlow(){
-  const jobEl = document.getElementById('cfJobIncome');
-  if(!jobEl) return; // page not loaded yet
-
-  const filtered = cashEvents.filter(cashEventMatchesFilter);
-  const jobIncome = filtered.filter(e => e.category === 'job').reduce((s,e) => s + e.amount, 0);
-  const muggingLossRaw = filtered.filter(e => e.category === 'mugged').reduce((s,e) => s + e.amount, 0);
-  const muggingGains = filtered.filter(e => e.category === 'mugging_others').reduce((s,e) => s + e.amount, 0);
-  const crimeIncomeCF = filtered.filter(e => e.category === 'crime').reduce((s,e) => s + e.amount, 0);
-  const muggingLoss = Math.max(0, muggingLossRaw - muggingGains - crimeIncomeCF - jobIncome);
-  const rehabCost = filtered.filter(e => e.category === 'rehab').reduce((s,e) => s + e.amount, 0);
-
-  jobEl.textContent = '$' + jobIncome.toLocaleString('en-US', {minimumFractionDigits:2});
-  document.getElementById('cfMuggingLoss').textContent = '-$' + muggingLoss.toLocaleString('en-US', {minimumFractionDigits:2});
-  const rehabEl = document.getElementById('cfRehab');
-  if(rehabEl) rehabEl.textContent = '-$' + rehabCost.toLocaleString('en-US', {minimumFractionDigits:2});
-  const propertyEl = document.getElementById('cfProperty');
-  const propertyCostCF = filtered.filter(e => e.category === 'property').reduce((s,e) => s + e.amount, 0);
-  if(propertyEl) propertyEl.textContent = '-$' + propertyCostCF.toLocaleString('en-US', {minimumFractionDigits:2});
-
-  const labelEl = document.getElementById('cfFilterLabel');
-  if(labelEl){
-    const labels = {
-      today: 'Showing: today',
-      month: 'Showing: this month',
-      all: 'Showing: all time',
-      date: `Showing: ${cashFlowFilter.value || 'N/A'}`,
-      monthpick: `Showing: ${cashFlowFilter.value || 'N/A'}`
-    };
-    labelEl.textContent = labels[cashFlowFilter.mode] || 'Showing: all time';
-  }
-}
-
-async function cfSyncClick(){
-  const btn = document.getElementById('cfSyncBtn');
-  const status = document.getElementById('cfSyncStatus');
-  btn.disabled = true;
-  status.textContent = 'Syncing…';
-  try{
-    await syncFromTorn();
-    status.textContent = 'Synced just now.';
-  }catch(e){
-    status.textContent = 'Sync failed: ' + e.message;
-  }
-  btn.disabled = false;
-}
-
-function renderDayProfit(){
-  const dateVal = document.getElementById('profitDate')?.value;
-  const label = document.querySelector('#dayProfitBox .label');
-  const amountEl = document.getElementById('dayProfitAmount');
-  if(!amountEl) return;
-
-  const sells = ledger.filter(r => r.type === 'sell' && (!dateVal || r.date === dateVal));
-  let dayTotal = 0;
-  sells.forEach(row => { dayTotal += computeSellProfit(row).profit; });
-
-  label.textContent = dateVal ? ('PROFIT FOR ' + dateVal) : 'PROFIT FOR ALL TIME';
-  amountEl.textContent = (dayTotal >= 0 ? '+' : '') + fmtMoney(dayTotal);
-  amountEl.style.color = dayTotal >= 0 ? 'var(--green)' : 'var(--red)';
-}
-
-function exportLedger(){
-  const blob = new Blob([JSON.stringify(ledger, null, 2)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'torn-ledger-backup.json';
-  a.click();
-}
-
-function importLedger(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try{
-      const imported = JSON.parse(e.target.result);
-      if(!Array.isArray(imported)) throw new Error('bad format');
-      ledger = imported;
-      saveLedger();
-      setStatus('Ledger imported.', true);
-    }catch(err){
-      setStatus('Import failed: file is not a valid ledger export.', false);
-    }
-  };
-  reader.readAsText(file);
-}
-
-// --- Initialization: runs last, after every function/const above is defined ---
-const todayStr = new Date().toISOString().slice(0,10);
-['historyFromDate','profitDate','ledgerFilterInput','cfDateInput','historyToDate'].forEach(id => {
-  const el = document.getElementById(id);
-  if(el) el.max = todayStr;
-});
-const historyToEl = document.getElementById('historyToDate');
-if(historyToEl && !historyToEl.value) historyToEl.value = todayStr;
-
-// If a key is already saved from before, apply the signup-date restriction now too
-const savedKeyForSignup = localStorage.getItem('tornApiKey');
-if(savedKeyForSignup) applySignupDateLimit(savedKeyForSignup);
-const cfMonthEl = document.getElementById('cfMonthInput');
-if(cfMonthEl) cfMonthEl.max = todayStr.slice(0,7);
-const ledgerFilterEl = document.getElementById('ledgerFilterInput');
-if(ledgerFilterEl) ledgerFilterEl.value = todayStr;
-setActiveQuickButton(['lfBtnAll','lfBtnToday','lfBtnYesterday'], 'lfBtnToday');
-setActiveQuickButton(['cfBtnToday','cfBtnMonth','cfBtnAll'], 'cfBtnAll');
-setActiveQuickButton(['pdBtnToday','pdBtnYesterday','pdBtnAll'], 'pdBtnAll');
-
-// HARDCODED area codes. These are locked in permanently: they force-apply on
-// every page load and are not editable anywhere in the app. To add more
-// later, just add another 'code': 'Country' line here.
-const HARDCODED_AREAS = {
-  '2': 'Mexico',
-  '3': 'Hawaii',
-  '4': 'South Africa',
-  '5': 'Japan',
-  '6': 'China',
-  '7': 'Argentina',
-  '8': 'Switzerland',
-  '9': 'Canada',
-  '10': 'United Kingdom',
-  '11': 'UAE',
-  '12': 'Cayman Islands'
-};
-Object.entries(HARDCODED_AREAS).forEach(([code, country]) => {
-  areaLabels[code] = country; // always wins, every load, no exceptions
-});
-localStorage.setItem('tornAreaLabels', JSON.stringify(areaLabels));
-
-// Retroactively fix any ledger rows that were saved under a different label
-// for one of these locked codes before it was hardcoded.
-(function fixHardcodedAreaRows(){
-  let changed = false;
-  ledger.forEach(r => {
-    if(r.source === 'abroad' && r.areaCode && HARDCODED_AREAS[r.areaCode] && r.counterparty !== HARDCODED_AREAS[r.areaCode]){
-      r.counterparty = HARDCODED_AREAS[r.areaCode];
-      changed = true;
-    }
-  });
-  if(changed) localStorage.setItem('tornLedger', JSON.stringify(ledger));
-})();
-
-const savedTheme = localStorage.getItem('tornTheme') || 'system';
-applyTheme(savedTheme);
-
-const cachedBalance = JSON.parse(localStorage.getItem('tornBalance') || 'null');
-if(cachedBalance) renderBalance(cachedBalance);
-
-render();
-renderCashFlow();
-renderDonationStats();
-pruneStaleUnmatched(); // clean out entries that are now recognized, even without a fresh sync
-const unmatchedBox = document.getElementById('unmatchedBox');
-if(unmatchedBox){
-  unmatchedBox.innerHTML = persistedUnmatched.length
-    ? `<div style="color:var(--text-dim); font-size:0.7rem; margin-bottom:4px;">${persistedUnmatched.length} unique unmatched entries saved (newest 500 kept)</div>` +
-      persistedUnmatched.map(u => `<div style="margin-bottom:6px;">[${u.timestamp}] "${escapeHtml(u.title)}"<br>${escapeHtml(JSON.stringify(u.data))}</div>`).join('')
-    : 'None. Everything recognized matched a known pattern.';
-}
-setTimeout(() => backgroundResolveNames(), 2000);
-
-// WhatsApp support links. Built with encodeURIComponent rather than hand-typed
-// URL encoding, and wrapped in try/catch, so a bad character or a missing
-// element can never break the rest of the app.
-try{
-  const WHATSAPP_NUMBER = '2349132449484';
-  function buildWhatsAppLink(message){
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-  }
-
-  const coffeeMsg = "Hi Chisom! I saw your message on Torn Ledger, I really like your work and what you've built with the site. I'd like to support you, could you send me your payment details?";
-  const coffeeLink = document.getElementById('coffeeSupportLink');
-  if(coffeeLink) coffeeLink.href = buildWhatsAppLink(coffeeMsg);
-
-  const fundraiserMsg = "Hi Chisom! I saw your message about needing help with your college documents before the deadline. I'd like to support you, could you send me your payment details?";
-  const fundraiserLink = document.getElementById('fundraiserSupportLink');
-  if(fundraiserLink) fundraiserLink.href = buildWhatsAppLink(fundraiserMsg);
-}catch(e){ /* never let this block the rest of the app */ }
-</script>
-<script data-goatcounter="https://tornledger.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
-</body>
-                                                                                    </html>
+    if(fortuneCost > 0) insights.push(`You've spent ${fmtMone
